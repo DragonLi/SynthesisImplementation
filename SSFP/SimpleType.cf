@@ -1,0 +1,50 @@
+entrypoints ADTypeList;
+
+EmptyDef . ADTypeList ::= ;
+ListDef  . ADTypeList ::= ADType ";" ADTypeList;
+--separator nonempty ADType ";";
+
+comment "--" ;
+comment "{-" "-}" ;
+
+QIdent . QName ::= [Ident];
+separator nonempty Ident "." ;
+
+SimpleIdent . SimpleName ::= Ident;
+
+separator nonempty TypeExpr2 "";
+
+TyQName    . TypeExpr2 ::= QName;
+TyApp      . TypeExpr1 ::= TypeExpr2 [TypeExpr2];
+TyArr      . TypeExpr ::= TypeExpr1 "->" TypeExpr;
+TyNamedArr . TypeExpr ::= "(" SimpleName ":" TypeExpr ")" "->" TypeExpr;
+
+coercions TypeExpr 2;
+
+UnionType . ADType ::= "type" SimpleName TypeParamList "=" ConstructorDeclList;
+
+EmptyTyP  . TypeParamList ::= ;
+LastTyP   . TypeParamList ::= Ident;
+ConsTyP   . TypeParamList ::= Ident TypeParamList;
+
+NilCtrD   . ConstructorDeclList ::=;
+ConsCtrD  . ConstructorDeclList ::= "|" ConstructorDecl ConstructorDeclList;
+CtrDecl   . ConstructorDecl ::= SimpleName ConstructorTypeDecl;
+
+EmptyCtrTyD . ConstructorTypeDecl ::= ;
+FullCtrTyD  . ConstructorTypeDecl ::= ":" TypeExpr;
+ParamCtrTyD . ConstructorTypeDecl ::= "of" ParamTypeDecl;
+
+LastParamTy . ParamTypeDecl ::= TypeExpr;
+ConsParamTy . ParamTypeDecl ::= TypeExpr "*" ParamTypeDecl;
+
+--FieldNameDeclList ::= ;
+--FieldNameDeclList ::= NamedParamDecl ";" FieldNameDeclList;
+separator NamedParamDecl ";";
+
+FullTyDecl  . NamedParamDecl ::= SimpleName ":" TypeExpr;
+ParamTyDecl .NamedParamDecl ::= SimpleName "of" ParamTypeDecl;
+
+RecordType . ADType ::= "type" SimpleName TypeParamList "=" SimpleName "{" [NamedParamDecl] "}";
+
+CoType . ADType ::= "cotype" SimpleName TypeParamList "=" SimpleName "{" [NamedParamDecl] "}";
