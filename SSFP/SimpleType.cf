@@ -38,8 +38,6 @@ ParamCtrTyD . ConstructorTypeDecl ::= "of" ParamTypeDecl;
 LastParamTy . ParamTypeDecl ::= TypeExpr;
 ConsParamTy . ParamTypeDecl ::= TypeExpr "*" ParamTypeDecl;
 
---FieldNameDeclList ::= ;
---FieldNameDeclList ::= NamedParamDecl ";" FieldNameDeclList;
 separator NamedParamDecl ";";
 
 FullTyDecl  . NamedParamDecl ::= SimpleName ":" TypeExpr;
@@ -48,3 +46,39 @@ ParamTyDecl .NamedParamDecl ::= SimpleName "of" ParamTypeDecl;
 RecordType . ADType ::= "type" SimpleName TypeParamList "=" SimpleName "{" [NamedParamDecl] "}";
 
 CoType . ADType ::= "cotype" SimpleName TypeParamList "=" SimpleName "{" [NamedParamDecl] "}";
+
+separator nonempty FunParamDecl "";
+SimplePDecl . FunParamDecl ::= SimpleName;
+NamedPDecl  . FunParamDecl ::= "(" SimpleName ":" TypeExpr ")";
+
+separator nonempty SinglePattern1 "";
+IdentPat . SinglePattern1 ::= QName;
+AppPat   . SinglePattern ::= SinglePattern1 [SinglePattern1];
+coercions SinglePattern 1;
+
+--separator nonempty SinglePattern ",";?
+LastPat . PatternList ::= SinglePattern;
+ConsPat . PatternList ::= SinglePattern "," PatternList;
+
+MatchBranch . Branching ::= "|" PatternList "->" TermExpr ;
+separator nonempty Branching ";";
+
+RecFieldBind . FieldBinding ::= QName "=" TermExpr;
+separator nonempty FieldBinding ";";
+
+--separator nonempty TermExpr ",";
+LastTerm . TermExprList ::= TermExpr;
+ConsTerm . TermExprList ::= TermExpr "," TermExprList;
+separator nonempty TermExpr2 "";
+
+TermIdent . TermExpr2 ::= QName;
+TermApp   . TermExpr1 ::= TermExpr2 [TermExpr2];
+TermAbs   . AbsTermExpr ::= "fun" [FunParamDecl] "=>" TermExpr;
+TermBind  . TermExpr ::= "let" SinglePattern "=" TermExpr1 "in" TermExpr;
+TermBindRec . TermExpr ::= "let rec" SimpleName "=" TermExpr1 "in" TermExpr;
+TermProj . TermExpr ::= TermExpr "^" QName;
+TermWithType . TermExpr ::= "(" TermExpr ":" TypeExpr ")";
+TermRecMod . TermExpr ::= "{" TermExpr1 "with" [FieldBinding] "}";
+TermPatMatch . TermExpr ::= "match" TermExprList "with" "{" [Branching] "}";
+TermImpoMatch . TermExpr ::= "match" TermExprList "with" "absurd";
+coercions TermExpr 2;
