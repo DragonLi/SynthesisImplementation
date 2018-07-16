@@ -1,0 +1,16 @@
+fun x => x
+{-
+f x ,
+let f x = x in f ,
+let rec f x = x in f ,
+Nil ,
+Suc n ,
+Tuple x y ,
+{x with second = y} ,
+match x with {| Zero->x; | Suc m -> m ;} ,
+match y with absurd ,
+Tuple.first x ,
+Stream.head s ,
+s ^head ,
+(e:A) ,
+-}
