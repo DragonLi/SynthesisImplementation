@@ -1,0 +1,23 @@
+type Empty = ;
+
+type One = One{};
+
+type One' = | One;
+
+type Nat = | Zero | Suc : (pred:Nat) -> Nat;
+
+type List A = | Nil : List A | Cons : A->List A -> List A;
+
+type InfTree A = | Leaf | Branch : (Nat -> Tree A) -> Tree A;
+
+type Tuple A B = Tuple{first:A ; second:B};
+
+cotype Stream A = Stream {head : A ; tail of Stream A};
+
+cotype LazyTuple A B = Tuple{first:A ; second: B};
+
+type coList A = | Nil | Cons of LazyTuple A (coList A);
+
+type coList' A = | Nil | Cons : LazyTuple A (coList A)->coList' A;
+
+type Tuple A B C = Tuple{item1 of A;item2 of B;item3 of C};

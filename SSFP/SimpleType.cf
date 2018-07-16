@@ -1,12 +1,9 @@
-entrypoints TermExprList;
+entrypoints DefList;
 
 --testing entrypoint
-LastTerm . TermExprList ::= TermExpr;
-ConsTerm . TermExprList ::= TermExpr "," TermExprList;
-
---testing entrypoint
---EmptyDef . ADTypeList ::= ;
---ListDef  . ADTypeList ::= ADType ";" ADTypeList;
+EmptyDef . DefList ::= ;
+ConsTypeDef  . DefList ::= ADType ";" DefList;
+ConsFunDef  . DefList ::= FunDef ";" DefList;
 
 comment "--" ;
 comment "{-" "-}" ;
@@ -55,10 +52,12 @@ terminator FunParamDecl "";
 SimplePDecl . FunParamDecl ::= SimpleName;
 NamedPDecl  . FunParamDecl ::= "(" SimpleName ":" TypeExpr ")";
 
-separator nonempty SinglePattern1 "";
-IdentPat . SinglePattern1 ::= QName;
-AppPat   . SinglePattern ::= SinglePattern1 [SinglePattern1];
-coercions SinglePattern 1;
+IdentPat . SinglePattern2 ::= QName;
+SimpleAppPat . SinglePattern2 ::= SinglePattern2 SimpleName;
+AppFirstPat   . SinglePattern1 ::= QName "(" SinglePattern ")";
+AppNextPat   . SinglePattern1 ::= SinglePattern1 "(" SinglePattern ")";
+AtPat    . SinglePattern ::= "(" SinglePattern ")" "@" SimpleName;
+coercions SinglePattern 2;
 
 --separator nonempty SinglePattern ",";
 LastPat . PatternList ::= SinglePattern;
@@ -70,10 +69,36 @@ terminator nonempty Branching ";";
 RecFieldBind . FieldBinding ::= QName "=" TermExpr;
 separator nonempty FieldBinding ";";
 
-separator nonempty TermExpr2 "";
 
-TermIdent . TermExpr2 ::= QName;
-TermApp   . TermExpr1 ::= TermExpr2 [TermExpr2];
+TermOr. TermExpr2 ::= TermExpr2 "|" TermExpr3;
+TermAnd. TermExpr3 ::= TermExpr3 "&" TermExpr4;
+
+TermEqual. TermExpr4 ::= TermExpr4 "=" TermExpr5;
+TermInEqual. TermExpr4 ::= TermExpr4 "!=" TermExpr5;
+
+TermLess. TermExpr5 ::= TermExpr5 "<" TermExpr6;
+TermLessEq. TermExpr5 ::= TermExpr5 "<=" TermExpr6;
+TermGt. TermExpr5 ::= TermExpr5 ">" TermExpr6;
+TermGtEq. TermExpr5 ::= TermExpr5 ">=" TermExpr6;
+
+TermAdd. TermExpr6  ::= TermExpr6 "+" TermExpr7;
+TermSub. TermExpr6  ::= TermExpr6 "-" TermExpr7;
+
+TermMul. TermExpr7 ::= TermExpr7 "*" TermExpr8;
+TermDiv. TermExpr7 ::= TermExpr7 "/" TermExpr8;
+TermRem. TermExpr7 ::= TermExpr7 "%" TermExpr8;
+
+TermNot. TermExpr8 ::= "!" TermExpr9;
+TermNeg. TermExpr8 ::= "(" "-" TermExpr9 ")";
+
+separator nonempty TermExpr10 "";
+TermApp   . TermExpr9 ::= TermExpr10 [TermExpr10];
+
+ConstInt. TermExpr10 ::= Integer ;
+ConstDouble. TermExpr10 ::= Double ;
+ConstStr. TermExpr10 ::= String ;
+TermIdent . TermExpr10 ::= QName;
+
 TermAbs   . TermExpr ::= "fun" FunParamDecl [FunParamDecl] "=>" TermExpr;
 TermBindPat . TermExpr ::= "let" "(" SinglePattern ")" "=" TermExpr1 "in" TermExpr;
 TermBind  . TermExpr ::= "let" SimpleName [FunParamDecl] "=" TermExpr1 "in" TermExpr;
@@ -83,4 +108,12 @@ TermWithType . TermExpr ::= "(" TermExpr ":" TypeExpr ")";
 TermRecMod . TermExpr ::= "{" TermExpr1 "with" [FieldBinding] "}";
 TermPatMatch . TermExpr ::= "match" TermExprList "with" "{" [Branching] "}";
 TermImpoMatch . TermExpr ::= "match" TermExprList "with" "absurd";
-coercions TermExpr 2;
+coercions TermExpr 10;
+
+LastTerm . TermExprList ::= TermExpr;
+ConsTerm . TermExprList ::= TermExpr "," TermExprList;
+
+FunBind      . FunDef ::= "let" SimpleName [FunParamDecl] "=" TermExpr;
+FunBindWithR . FunDef ::= "let" SimpleName [FunParamDecl] ":" TypeExpr "=" TermExpr;
+FunBindRec      . FunDef ::= "let" "rec" SimpleName [FunParamDecl] "=" TermExpr;
+FunBindRecWithR . FunDef ::= "let" "rec" SimpleName [FunParamDecl] ":" TypeExpr "=" TermExpr;

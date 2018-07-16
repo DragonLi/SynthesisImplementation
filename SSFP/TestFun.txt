@@ -1,0 +1,23 @@
+let if c t f = match c with {| true -> t; | false -> f;};
+
+let rec fac (n:Nat) : Nat = if (n=0) 1 (n * fac (n-1));
+
+let rec facAcc (n:Nat) acc : Nat = match n with
+      {
+          | Zero -> acc;
+          | Suc m -> facAcc m (n * acc);
+      };
+
+let rec fib n = match n with {
+  | Zero -> Suc Zero;
+  | (Suc Zero)@m -> m;
+  | Suc (Suc m)@n1 -> fib m + fib n1;
+};
+
+let fac =
+    let rec facAcc n acc = match n with
+      {
+          | Zero -> acc;
+          | Suc m -> facAcc m (n * acc);
+      }
+    in fun n => facAcc n 0;
