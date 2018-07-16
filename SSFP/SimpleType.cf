@@ -1,8 +1,12 @@
-entrypoints TermExpr;
+entrypoints TermExprList;
 
+--testing entrypoint
+LastTerm . TermExprList ::= TermExpr;
+ConsTerm . TermExprList ::= TermExpr "," TermExprList;
+
+--testing entrypoint
 --EmptyDef . ADTypeList ::= ;
 --ListDef  . ADTypeList ::= ADType ";" ADTypeList;
---separator nonempty ADType ";";
 
 comment "--" ;
 comment "{-" "-}" ;
@@ -47,7 +51,7 @@ RecordType . ADType ::= "type" SimpleName TypeParamList "=" SimpleName "{" [Name
 
 CoType . ADType ::= "cotype" SimpleName TypeParamList "=" SimpleName "{" [NamedParamDecl] "}";
 
-separator nonempty FunParamDecl "";
+terminator FunParamDecl "";
 SimplePDecl . FunParamDecl ::= SimpleName;
 NamedPDecl  . FunParamDecl ::= "(" SimpleName ":" TypeExpr ")";
 
@@ -61,22 +65,20 @@ LastPat . PatternList ::= SinglePattern;
 ConsPat . PatternList ::= SinglePattern "," PatternList;
 
 MatchBranch . Branching ::= "|" PatternList "->" TermExpr ;
-separator nonempty Branching ";";
+terminator nonempty Branching ";";
 
 RecFieldBind . FieldBinding ::= QName "=" TermExpr;
 separator nonempty FieldBinding ";";
 
---separator nonempty TermExpr ",";
-LastTerm . TermExprList ::= TermExpr;
-ConsTerm . TermExprList ::= TermExpr "," TermExprList;
 separator nonempty TermExpr2 "";
 
 TermIdent . TermExpr2 ::= QName;
 TermApp   . TermExpr1 ::= TermExpr2 [TermExpr2];
-TermAbs   . TermExpr ::= "fun" [FunParamDecl] "=>" TermExpr;
-TermBind  . TermExpr ::= "let" SinglePattern "=" TermExpr1 "in" TermExpr;
-TermBindRec . TermExpr ::= "let rec" SimpleName "=" TermExpr1 "in" TermExpr;
-TermProj . TermExpr ::= TermExpr "^" QName;
+TermAbs   . TermExpr ::= "fun" FunParamDecl [FunParamDecl] "=>" TermExpr;
+TermBindPat . TermExpr ::= "let" "(" SinglePattern ")" "=" TermExpr1 "in" TermExpr;
+TermBind  . TermExpr ::= "let" SimpleName [FunParamDecl] "=" TermExpr1 "in" TermExpr;
+TermBindRec . TermExpr ::= "let" "rec" SimpleName [FunParamDecl] "=" TermExpr1 "in" TermExpr;
+TermProj . TermExpr ::= "(" TermExpr ")" "^" QName;
 TermWithType . TermExpr ::= "(" TermExpr ":" TypeExpr ")";
 TermRecMod . TermExpr ::= "{" TermExpr1 "with" [FieldBinding] "}";
 TermPatMatch . TermExpr ::= "match" TermExprList "with" "{" [Branching] "}";

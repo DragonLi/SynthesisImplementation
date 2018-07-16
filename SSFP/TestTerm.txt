@@ -1,7 +1,10 @@
-fun x => x
-{-
-f x ,
+--fun => t,
+fun x => x ,
+fun x (y:Nat) => y,
+f x,
+let f = Tuple x y in f,
 let f x = x in f ,
+let (Tuple x y) = z in x,
 let rec f x = x in f ,
 Nil ,
 Suc n ,
@@ -11,6 +14,5 @@ match x with {| Zero->x; | Suc m -> m ;} ,
 match y with absurd ,
 Tuple.first x ,
 Stream.head s ,
-s ^head ,
-(e:A) ,
--}
+(s)^head ,
+(e:A)
