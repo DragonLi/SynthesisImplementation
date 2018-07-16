@@ -52,18 +52,17 @@ terminator FunParamDecl "";
 SimplePDecl . FunParamDecl ::= SimpleName;
 NamedPDecl  . FunParamDecl ::= "(" SimpleName ":" TypeExpr ")";
 
-IdentPat . SinglePattern2 ::= QName;
-SimpleAppPat . SinglePattern2 ::= SinglePattern2 SimpleName;
-AppFirstPat   . SinglePattern1 ::= QName "(" SinglePattern ")";
-AppNextPat   . SinglePattern1 ::= SinglePattern1 "(" SinglePattern ")";
+IdentPat . SinglePattern ::= QName;
+AppSimplePat  . SinglePattern ::= SinglePattern SimpleName;
+AppComplexPat . SinglePattern ::= SinglePattern "(" SinglePattern ")";
+AppAtPat . SinglePattern ::= SinglePattern "(" SinglePattern ")" "@" SimpleName;
 AtPat    . SinglePattern ::= "(" SinglePattern ")" "@" SimpleName;
-coercions SinglePattern 2;
 
---separator nonempty SinglePattern ",";
-LastPat . PatternList ::= SinglePattern;
-ConsPat . PatternList ::= SinglePattern "," PatternList;
+separator nonempty SinglePattern ",";
+--LastPat . PatternList ::= SinglePattern;
+--ConsPat . PatternList ::= SinglePattern "," PatternList;
 
-MatchBranch . Branching ::= "|" PatternList "->" TermExpr ;
+MatchBranch . Branching ::= "|" [SinglePattern] "->" TermExpr ;
 terminator nonempty Branching ";";
 
 RecFieldBind . FieldBinding ::= QName "=" TermExpr;
@@ -100,12 +99,12 @@ ConstStr. TermExpr10 ::= String ;
 TermIdent . TermExpr10 ::= QName;
 
 TermAbs   . TermExpr ::= "fun" FunParamDecl [FunParamDecl] "=>" TermExpr;
-TermBindPat . TermExpr ::= "let" "(" SinglePattern ")" "=" TermExpr1 "in" TermExpr;
-TermBind  . TermExpr ::= "let" SimpleName [FunParamDecl] "=" TermExpr1 "in" TermExpr;
-TermBindRec . TermExpr ::= "let" "rec" SimpleName [FunParamDecl] "=" TermExpr1 "in" TermExpr;
+TermBindPat . TermExpr ::= "let" "(" SinglePattern ")" "=" TermExpr "in" TermExpr;
+TermBind  . TermExpr ::= "let" SimpleName [FunParamDecl] "=" TermExpr "in" TermExpr;
+TermBindRec . TermExpr ::= "let" "rec" SimpleName [FunParamDecl] "=" TermExpr "in" TermExpr;
 TermProj . TermExpr ::= "(" TermExpr ")" "^" QName;
 TermWithType . TermExpr ::= "(" TermExpr ":" TypeExpr ")";
-TermRecMod . TermExpr ::= "{" TermExpr1 "with" [FieldBinding] "}";
+TermRecMod . TermExpr ::= "{" TermExpr "with" [FieldBinding] "}";
 TermPatMatch . TermExpr ::= "match" TermExprList "with" "{" [Branching] "}";
 TermImpoMatch . TermExpr ::= "match" TermExprList "with" "absurd";
 coercions TermExpr 10;

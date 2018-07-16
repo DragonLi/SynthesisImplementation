@@ -18,6 +18,15 @@ let fac =
     let rec facAcc n acc = match n with
       {
           | Zero -> acc;
-          | Suc m -> facAcc m (n * acc);
+          | Suc m -> let acc'=n*acc in facAcc m acc';
       }
     in fun n => facAcc n 0;
+
+let Absurd : Empty -> T = fun zero => match (zero:Empty) with absurd;
+
+let testpair p = 
+    let (Tuple fst snd) = p in
+    let (Tuple (Tuple x)@a (Tuple y)@z) = snd in
+    let tail = (z) ^Stream.tail in
+    let r = { (let x = f z in y) with snd = b}
+    in Tuple fst snd;
