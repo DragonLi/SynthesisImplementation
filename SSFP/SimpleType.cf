@@ -1,9 +1,14 @@
-entrypoints DefList;
+entrypoints ModuleDef;
 
---testing entrypoint
+Module . ModuleDef ::= "module" QName ";" [OpenModule] DefList;
+ImportModule . OpenModule ::= "open" QName;
+ImportModuleAs . OpenModule ::= "open" QName "as" SimpleName;
+terminator OpenModule ";";
+
 EmptyDef . DefList ::= ;
 ConsTypeDef  . DefList ::= ADType ";" DefList;
 ConsFunDef  . DefList ::= FunDef ";" DefList;
+Mutual . DefList ::= "mutual" "{" DefList "}";
 
 comment "--" ;
 comment "{-" "-}" ;
@@ -15,6 +20,9 @@ SimpleIdent . SimpleName ::= Ident;
 
 separator nonempty TypeExpr2 "";
 
+TyInt   . TypeExpr2 ::= "Int";
+TyFloat . TypeExpr2 ::= "Double";
+TyStr   . TypeExpr2 ::= "String";
 TyQName    . TypeExpr2 ::= QName;
 TyApp      . TypeExpr1 ::= TypeExpr2 [TypeExpr2];
 TyArr      . TypeExpr ::= TypeExpr1 "->" TypeExpr;
@@ -97,6 +105,10 @@ ConstInt. TermExpr10 ::= Integer ;
 ConstDouble. TermExpr10 ::= Double ;
 ConstStr. TermExpr10 ::= String ;
 TermIdent . TermExpr10 ::= QName;
+
+TermConvInt . TermExpr10 ::= "int" "(" TermExpr ")";
+TermConvStr . TermExpr10 ::= "string" "(" TermExpr ")";
+TermConvDouble . TermExpr10 ::= "double" "(" TermExpr ")";
 
 TermAbs   . TermExpr ::= "fun" FunParamDecl [FunParamDecl] "=>" TermExpr;
 TermBindPat . TermExpr ::= "let" "(" SinglePattern ")" "=" TermExpr "in" TermExpr;

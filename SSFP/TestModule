@@ -1,3 +1,6 @@
+module Prelude;
+open Prelude.internal as internal;
+
 let if c t f = match c with {| true -> t; | false -> f;};
 
 let convert x = int (x) + 10;
