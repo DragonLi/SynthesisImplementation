@@ -1,6 +1,30 @@
 module Prelude;
 open Prelude.internal as internal;
 
+type Empty = ;
+
+type One = One{};
+
+type One' = | One;
+
+type Nat = | Zero | Suc : (pred:Nat) -> Nat;
+
+type List A = | Nil : List A | Cons : A->List A -> List A;
+
+type InfTree A = | Leaf | Branch : (Nat -> Tree A) -> Tree A;
+
+type Tuple A B = Tuple{first:A ; second:B};
+
+lazy type Stream A = {head : A ; tail of Stream A};
+
+lazy type LazyTuple A B = {first:A ; second: B};
+
+type coList A = | Nil | Cons of LazyTuple A (coList A);
+
+type coList' A = | Nil | Cons : LazyTuple A (coList A)->coList' A;
+
+type Tuple A B C = Tuple{item1 of A;item2 of B;item3 of C};
+
 let if c t f = match c with {| true -> t; | false -> f;};
 
 let convert x = int (x) + 10;

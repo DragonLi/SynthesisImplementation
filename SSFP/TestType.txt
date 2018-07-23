@@ -12,9 +12,9 @@ type InfTree A = | Leaf | Branch : (Nat -> Tree A) -> Tree A;
 
 type Tuple A B = Tuple{first:A ; second:B};
 
-cotype Stream A = Stream {head : A ; tail of Stream A};
+lazy type Stream A = Stream {head : A ; tail of Stream A};
 
-cotype LazyTuple A B = Tuple{first:A ; second: B};
+lazy type LazyTuple A B = Tuple{first:A ; second: B};
 
 type coList A = | Nil | Cons of LazyTuple A (coList A);
 

@@ -44,14 +44,13 @@ IndDeclTy  . IndTyCtorPre ::= "type" TyCtorDecl;
 CoIndDeclTy . CoIndTyCtorPre ::= "lazy" "type" TyCtorDecl;
 
 EmptyTyP  . TypeParamList ::= ;
-LastTyP   . TypeParamList ::= Ident;
-ConsTyP   . TypeParamList ::= Ident TypeParamList;
+ConsTyP   . TypeParamList ::= TypeParamList Ident;
 
 UnionType . ADType ::= IndTyCtorPre "=" ConstructorDeclList;
 
 RecordType . ADType ::= IndTyCtorPre "=" SimpleName "{" [NamedParamDecl] "}";
 
-CoType . ADType ::= CoIndTyCtorPre"=" SimpleName "{" [NamedParamDecl] "}";
+CoType . ADType ::= CoIndTyCtorPre"=" "{" [NamedParamDecl] "}";
 
 ValCtorNm . ValueCtorName ::= SimpleName;
 

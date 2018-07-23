@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AttributeGrammer", "AttributeGrammer.csproj", "{FAA213D8-C213-4C90-8C01-1501B27E3525}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FAA213D8-C213-4C90-8C01-1501B27E3525}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FAA213D8-C213-4C90-8C01-1501B27E3525}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FAA213D8-C213-4C90-8C01-1501B27E3525}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FAA213D8-C213-4C90-8C01-1501B27E3525}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
