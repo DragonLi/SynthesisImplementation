@@ -1,6 +1,6 @@
 entrypoints ModuleDef;
 
-Module . ModuleDef ::= "module" QName ";" [OpenModule] DefList;
+Module . ModuleDef ::= ModuleName ";" [OpenModule] DefList;
 ImportModule . OpenModule ::= "open" QName;
 ImportModuleAs . OpenModule ::= "open" QName "as" SimpleName;
 terminator OpenModule ";";
@@ -16,6 +16,8 @@ comment "{-" "-}" ;
 QIdent . QName ::= [Ident];
 separator nonempty Ident "." ;
 
+MName . ModuleName ::= "module" QName;
+
 SimpleIdent . SimpleName ::= Ident;
 
 separator nonempty TypeExpr2 "";
@@ -26,19 +28,29 @@ TyStr   . TypeExpr2 ::= "String";
 TyQName    . TypeExpr2 ::= QName;
 TyApp      . TypeExpr1 ::= TypeExpr2 [TypeExpr2];
 TyArr      . TypeExpr ::= TypeExpr1 "->" TypeExpr;
-TyNamedArr . TypeExpr ::= "(" SimpleName ":" TypeExpr ")" "->" TypeExpr;
-
+TyNamedArr . TypeExpr ::= TypeArrHead "->" TypeExpr;
+TyNamedHead. TypeArrHead ::= "(" SimpleName ":" TypeExpr ")";
 coercions TypeExpr 2;
 
-UnionType . ADType ::= "type" SimpleName TypeParamList "=" ConstructorDeclList;
+TyDeclName . TyCtorDecl ::= SimpleName TypeParamList;
+IndDeclTy  . IndTyCtorPre ::= "type" TyCtorDecl;
+CoIndDeclTy . CoIndTyCtorPre ::= "lazy" "type" TyCtorDecl;
 
 EmptyTyP  . TypeParamList ::= ;
 LastTyP   . TypeParamList ::= Ident;
 ConsTyP   . TypeParamList ::= Ident TypeParamList;
 
+UnionType . ADType ::= IndTyCtorPre "=" ConstructorDeclList;
+
+RecordType . ADType ::= IndTyCtorPre "=" SimpleName "{" [NamedParamDecl] "}";
+
+CoType . ADType ::= CoIndTyCtorPre"=" SimpleName "{" [NamedParamDecl] "}";
+
+ValCtorNm . ValueCtorName ::= SimpleName;
+
 NilCtrD   . ConstructorDeclList ::=;
 ConsCtrD  . ConstructorDeclList ::= "|" ConstructorDecl ConstructorDeclList;
-CtrDecl   . ConstructorDecl ::= SimpleName ConstructorTypeDecl;
+CtrDecl   . ConstructorDecl ::= ValueCtorName ConstructorTypeDecl;
 
 EmptyCtrTyD . ConstructorTypeDecl ::= ;
 FullCtrTyD  . ConstructorTypeDecl ::= ":" TypeExpr;
@@ -50,11 +62,41 @@ ConsParamTy . ParamTypeDecl ::= TypeExpr "*" ParamTypeDecl;
 separator NamedParamDecl ";";
 
 FullTyDecl  . NamedParamDecl ::= SimpleName ":" TypeExpr;
-ParamTyDecl .NamedParamDecl ::= SimpleName "of" ParamTypeDecl;
+ParamTyDecl . NamedParamDecl ::= SimpleName "of" ParamTypeDecl;
 
-RecordType . ADType ::= "type" SimpleName TypeParamList "=" SimpleName "{" [NamedParamDecl] "}";
 
-CoType . ADType ::= "cotype" SimpleName TypeParamList "=" SimpleName "{" [NamedParamDecl] "}";
+TermOr. TermExpr1 ::= TermExpr1 "|" TermExpr2;
+TermAnd. TermExpr2 ::= TermExpr2 "&" TermExpr3;
+
+TermEqual. TermExpr3 ::= TermExpr3 "=" TermExpr4;
+TermInEqual. TermExpr3 ::= TermExpr3 "!=" TermExpr4;
+
+TermLess. TermExpr4 ::= TermExpr4 "<" TermExpr5;
+TermLessEq. TermExpr4 ::= TermExpr4 "<=" TermExpr5;
+TermGt. TermExpr4 ::= TermExpr4 ">" TermExpr5;
+TermGtEq. TermExpr4 ::= TermExpr4 ">=" TermExpr5;
+
+TermAdd. TermExpr5  ::= TermExpr5 "+" TermExpr6;
+TermSub. TermExpr5  ::= TermExpr5 "-" TermExpr6;
+
+TermMul. TermExpr6 ::= TermExpr6 "*" TermExpr7;
+TermDiv. TermExpr6 ::= TermExpr6 "/" TermExpr7;
+TermRem. TermExpr6 ::= TermExpr6 "%" TermExpr7;
+
+TermNot. TermExpr7 ::= "!" TermExpr8;
+TermNeg. TermExpr7 ::= "(" "-" TermExpr8 ")";
+
+separator nonempty TermExpr9 "";
+TermApp   . TermExpr8 ::= TermExpr9 [TermExpr9];
+
+ConstInt. TermExpr9 ::= Integer ;
+ConstDouble. TermExpr9 ::= Double ;
+ConstStr. TermExpr9 ::= String ;
+TermIdent . TermExpr9 ::= QName;
+
+TermConvInt . TermExpr9 ::= "int" "(" TermExpr ")";
+TermConvStr . TermExpr9 ::= "string" "(" TermExpr ")";
+TermConvDouble . TermExpr9 ::= "double" "(" TermExpr ")";
 
 terminator FunParamDecl "";
 SimplePDecl . FunParamDecl ::= SimpleName;
@@ -67,64 +109,37 @@ AppAtPat . SinglePattern ::= SinglePattern "(" SinglePattern ")" "@" SimpleName;
 AtPat    . SinglePattern ::= "(" SinglePattern ")" "@" SimpleName;
 
 separator nonempty SinglePattern ",";
---LastPat . PatternList ::= SinglePattern;
---ConsPat . PatternList ::= SinglePattern "," PatternList;
 
-MatchBranch . Branching ::= "|" [SinglePattern] "->" TermExpr ;
+MatchPattern . MatchPat ::= "|" [SinglePattern];
+MatchBranch . Branching ::= MatchPat "->" TermExpr ;
 terminator nonempty Branching ";";
 
 RecFieldBind . FieldBinding ::= QName "=" TermExpr;
 separator nonempty FieldBinding ";";
 
+LambdaParamList . LambdaFunParams ::= FunParamDecl [FunParamDecl];
+TermAbs   . TermExpr ::= "fun" LambdaFunParams "=>" TermExpr;
 
-TermOr. TermExpr2 ::= TermExpr2 "|" TermExpr3;
-TermAnd. TermExpr3 ::= TermExpr3 "&" TermExpr4;
+LetSinglePat . LetPatDecl ::= "(" SinglePattern ")";
+TermBindPat . TermExpr ::= "let" LetPatDecl "=" TermExpr "in" TermExpr;
 
-TermEqual. TermExpr4 ::= TermExpr4 "=" TermExpr5;
-TermInEqual. TermExpr4 ::= TermExpr4 "!=" TermExpr5;
+TermBind  . TermExpr ::= "let" LetFunDecl "=" TermExpr "in" TermExpr;
+TermBindRec . TermExpr ::= "let" LetRecFunDecl "=" TermExpr "in" TermExpr;
 
-TermLess. TermExpr5 ::= TermExpr5 "<" TermExpr6;
-TermLessEq. TermExpr5 ::= TermExpr5 "<=" TermExpr6;
-TermGt. TermExpr5 ::= TermExpr5 ">" TermExpr6;
-TermGtEq. TermExpr5 ::= TermExpr5 ">=" TermExpr6;
-
-TermAdd. TermExpr6  ::= TermExpr6 "+" TermExpr7;
-TermSub. TermExpr6  ::= TermExpr6 "-" TermExpr7;
-
-TermMul. TermExpr7 ::= TermExpr7 "*" TermExpr8;
-TermDiv. TermExpr7 ::= TermExpr7 "/" TermExpr8;
-TermRem. TermExpr7 ::= TermExpr7 "%" TermExpr8;
-
-TermNot. TermExpr8 ::= "!" TermExpr9;
-TermNeg. TermExpr8 ::= "(" "-" TermExpr9 ")";
-
-separator nonempty TermExpr10 "";
-TermApp   . TermExpr9 ::= TermExpr10 [TermExpr10];
-
-ConstInt. TermExpr10 ::= Integer ;
-ConstDouble. TermExpr10 ::= Double ;
-ConstStr. TermExpr10 ::= String ;
-TermIdent . TermExpr10 ::= QName;
-
-TermConvInt . TermExpr10 ::= "int" "(" TermExpr ")";
-TermConvStr . TermExpr10 ::= "string" "(" TermExpr ")";
-TermConvDouble . TermExpr10 ::= "double" "(" TermExpr ")";
-
-TermAbs   . TermExpr ::= "fun" FunParamDecl [FunParamDecl] "=>" TermExpr;
-TermBindPat . TermExpr ::= "let" "(" SinglePattern ")" "=" TermExpr "in" TermExpr;
-TermBind  . TermExpr ::= "let" SimpleName [FunParamDecl] "=" TermExpr "in" TermExpr;
-TermBindRec . TermExpr ::= "let" "rec" SimpleName [FunParamDecl] "=" TermExpr "in" TermExpr;
 TermProj . TermExpr ::= "(" TermExpr ")" "^" QName;
 TermWithType . TermExpr ::= "(" TermExpr ":" TypeExpr ")";
 TermRecMod . TermExpr ::= "{" TermExpr "with" [FieldBinding] "}";
-TermPatMatch . TermExpr ::= "match" TermExprList "with" "{" [Branching] "}";
-TermImpoMatch . TermExpr ::= "match" TermExprList "with" "absurd";
-coercions TermExpr 10;
 
-LastTerm . TermExprList ::= TermExpr;
-ConsTerm . TermExprList ::= TermExpr "," TermExprList;
+TermPatMatch . TermExpr ::= "match" MatchTermList "with" "{" [Branching] "}";
+TermImpoMatch . TermExpr ::= "match" MatchTermList "with" "absurd";
+coercions TermExpr 9;
 
-FunBind      . FunDef ::= "let" SimpleName [FunParamDecl] "=" TermExpr;
-FunBindWithR . FunDef ::= "let" SimpleName [FunParamDecl] ":" TypeExpr "=" TermExpr;
-FunBindRec      . FunDef ::= "let" "rec" SimpleName [FunParamDecl] "=" TermExpr;
-FunBindRecWithR . FunDef ::= "let" "rec" SimpleName [FunParamDecl] ":" TypeExpr "=" TermExpr;
+LastTerm . MatchTermList ::= TermExpr;
+ConsTerm . MatchTermList ::= TermExpr "," MatchTermList;
+
+LetFunNm   . LetFunDecl ::= SimpleName [FunParamDecl];
+LetFunNmTy . LetFunDecl ::= SimpleName [FunParamDecl] ":" TypeExpr;
+LetRecFunNm . LetRecFunDecl ::= "rec" LetFunDecl;
+
+FunBind . FunDef ::= "let" LetFunDecl "=" TermExpr;
+FunBindRec . FunDef ::= "let" LetRecFunDecl "=" TermExpr;
