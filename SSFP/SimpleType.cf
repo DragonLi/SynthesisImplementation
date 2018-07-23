@@ -6,19 +6,26 @@ ImportModuleAs . OpenModule ::= "open" QName "as" SimpleName;
 terminator OpenModule ";";
 
 EmptyDef . DefList ::= ;
-ConsTypeDef  . DefList ::= ADType ";" DefList;
-ConsFunDef  . DefList ::= FunDef ";" DefList;
-Mutual . DefList ::= "mutual" "{" DefList "}";
+ConsSingleDef . DefList ::= SingleDef ";" DefList;
+MutualDef . DefList ::= MutualDefList DefList;
+
+terminator SingleDef ";";
+ConsTypeDef . SingleDef ::= ADType;
+ConsFunDef  . SingleDef ::= FunDef;
+
+StartMutual . EnterMutual ::= "{";
+StopMutual  . ExitMutual  ::= "}";
+MutualList . MutualDefList ::= "mutual" EnterMutual [SingleDef] ExitMutual;
 
 comment "--" ;
 comment "{-" "-}" ;
 
-QIdent . QName ::= [Ident];
+QNameList . QName ::= [Ident];
 separator nonempty Ident "." ;
 
-MName . ModuleName ::= "module" QName;
+ModuleBindName . ModuleName ::= "module" QName;
 
-SimpleIdent . SimpleName ::= Ident;
+NameIdent . SimpleName ::= Ident;
 
 separator nonempty TypeExpr2 "";
 
