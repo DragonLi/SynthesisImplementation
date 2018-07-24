@@ -13,13 +13,20 @@ namespace SimpleType.Absyn
 
     public class SemanticException : Exception
     {
-        private LexLocation _loc;
+        public LexLocation Loc { get; }
 
         public SemanticException(string message, LexLocation loc) : base(message)
         {
-            _loc = loc;
+            Loc = loc;
         }
     }
+/*
+        catch (SemanticException se)
+        {
+          Console.Out.WriteLine(parser.HintAt(se.Loc));
+          Console.Out.WriteLine(se.Message);
+        }
+*/
     
     public partial class ParsingContext
     {
@@ -32,7 +39,7 @@ namespace SimpleType.Absyn
         public void AddCtorName(string name, List<string> paramLst, LexLocation lexLocation)
         {
             if (TypeCtorSigMap.ContainsKey(name))
-                throw new NotImplementedException("type constructor overloading is not implemented");
+                throw new SemanticException("type constructor overloading is not implemented",lexLocation);
             TypeCtorSigMap.Add(name,new TypeCtorSig
             {
                 Name = name,
@@ -63,7 +70,7 @@ namespace SimpleType.Absyn
     public partial class QNameList
     {
         private string _str;
-        partial void FirstPassTranverse(ParsingContext ctx)
+        partial void ScanPass(ParsingContext ctx)
         {
             var b = new StringBuilder();
             ListIdent_.ForEach(str=>b.Append(str).Append("."));
@@ -80,6 +87,7 @@ namespace SimpleType.Absyn
 
     public partial class TyDeclName
     {
+        public override LexLocation NameLoc => simplename_._lexLocation;
         public override string Name => simplename_.ToString();
         public override List<string> ParamList => typeparamlist_.ToList;        
     }
@@ -95,11 +103,12 @@ namespace SimpleType.Absyn
         public TyDeclName DeclarionParam => Accept(GetCtorVisitor.Instance, new Void());
         public abstract string Name { get; }
         public abstract List<string> ParamList { get; }
+        public abstract LexLocation NameLoc { get; }
     }
     
     public partial class ModuleBindName
     {
-        partial void FirstPassTranverse(ParsingContext ctx)
+        partial void ScanPass(ParsingContext ctx)
         {
             qname_.ToList.ForEach(nm =>
             {
@@ -110,7 +119,7 @@ namespace SimpleType.Absyn
 
     public partial class ImportModule
     {
-        partial void FirstPassTranverse(ParsingContext ctx)
+        partial void ScanPass(ParsingContext ctx)
         {
             Console.WriteLine($"TODO: open module {qname_}");
         }
@@ -118,7 +127,7 @@ namespace SimpleType.Absyn
 
     public partial class ImportModuleAs
     {
-        partial void FirstPassTranverse(ParsingContext ctx)
+        partial void ScanPass(ParsingContext ctx)
         {
             Console.WriteLine($"TODO: open module {qname_} as {simplename_}");
         }
@@ -149,9 +158,9 @@ namespace SimpleType.Absyn
     
     public partial class IndDeclTy
     {
-        partial void FirstPassTranverse(ParsingContext ctx)
+        partial void ScanPass(ParsingContext ctx)
         {
-            ctx.AddCtorName(tyctordecl_.Name, tyctordecl_.ParamList,_lexLocation);
+            ctx.AddCtorName(tyctordecl_.Name, tyctordecl_.ParamList,tyctordecl_.NameLoc);
         }
     }
 
@@ -170,7 +179,7 @@ namespace SimpleType.Absyn
     {
         partial void SemanticPass(ParsingContext ctx);
         
-        partial void FirstPassTranverse(ParsingContext ctx)
+        partial void ScanPass(ParsingContext ctx)
         {
             SemanticPass(ctx);    
             ctx.TypeCtorMap.Add(indtyctorpre_.IndTypeParam.TyCtorDecl_.Name,this);
