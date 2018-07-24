@@ -52,11 +52,10 @@ RecordType . ADType ::= IndTyCtorPre "=" SimpleName "{" [NamedParamDecl] "}";
 
 CoType . ADType ::= CoIndTyCtorPre"=" "{" [NamedParamDecl] "}";
 
-ValCtorNm . ValueCtorName ::= SimpleName;
-
 NilCtrD   . ConstructorDeclList ::=;
 ConsCtrD  . ConstructorDeclList ::= "|" ConstructorDecl ConstructorDeclList;
-CtrDecl   . ConstructorDecl ::= ValueCtorName ConstructorTypeDecl;
+CtrDecl   . ConstructorDecl ::= SimpleName ConstructorTypeDecl;
+--ValCtorNm . ValueCtorName ::= SimpleName;
 
 EmptyCtrTyD . ConstructorTypeDecl ::= ;
 FullCtrTyD  . ConstructorTypeDecl ::= ":" TypeExpr;

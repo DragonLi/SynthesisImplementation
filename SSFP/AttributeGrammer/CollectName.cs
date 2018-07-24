@@ -1,7 +1,8 @@
 ﻿using System;
+using System.IO;
+using System.Text;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Text;
 using QUT.Gppg;
 
 namespace SimpleType.Absyn
@@ -19,32 +20,145 @@ namespace SimpleType.Absyn
         {
             Loc = loc;
         }
+
+        public virtual void Print(TextWriter writer,Parser parser)
+        {
+            writer.WriteLine(parser.HintAt(Loc));
+            writer.WriteLine(Message);
+        }
     }
+
+    public class ADTDuplicatedException : SemanticException
+    {
+        private readonly ADType _type;
+        public ADTDuplicatedException(LexLocation loc, ADType type) : base("type constructor overloading is not implemented", loc)
+        {
+            _type = type;
+        }
+
+        public override void Print(TextWriter writer, Parser parser)
+        {
+            base.Print(writer, parser);
+            writer.WriteLine("there is another definition here:");
+            writer.WriteLine(parser.HintAt(_type._lexLocation));
+        }
+    }
+
+    public class ValueCtorDuplicatedException : SemanticException
+    {
+        private readonly ConstructorTypeDecl _ctor;
+
+        public ValueCtorDuplicatedException(ConstructorTypeDecl ctor, LexLocation loc) : base("value constructor overloading is not implemented", loc)
+        {
+            _ctor = ctor;
+        }
+
+        public override void Print(TextWriter writer, Parser parser)
+        {
+            base.Print(writer, parser);
+            writer.WriteLine("there is another definition here:");
+            writer.WriteLine(parser.HintAt(_ctor._lexLocation));
+        }
+    }
+    
 /*
+            parser.Context.PrintTypeCtorDef(Console.Out);
+            
         catch (SemanticException se)
         {
-          Console.Out.WriteLine(parser.HintAt(se.Loc));
-          Console.Out.WriteLine(se.Message);
+          se.Print(Console.Out,parser);
         }
+        
 */
     
     public partial class ParsingContext
     {
         internal static readonly List<string> EmptyListString = new List<string>();
         
-        public readonly Stack<string> NameSpaceStack=new Stack<string>();
-        public Dictionary<string,ADType> TypeCtorMap=new Dictionary<string, ADType>();
-        public Dictionary<string,TypeCtorSig> TypeCtorSigMap = new Dictionary<string, TypeCtorSig>();
+        private readonly Stack<string> NameSpaceStack=new Stack<string>();
 
-        public void AddCtorName(string name, List<string> paramLst, LexLocation lexLocation)
+        private string _moduleName;
+
+        private Dictionary<string,ADType> TypeCtorMap=new Dictionary<string, ADType>();
+        
+        private Dictionary<string,ConstructorTypeDecl> ValueCtorMap = new Dictionary<string, ConstructorTypeDecl>();
+        
+        private TypeCtorSig _definingCtor;
+        private TypeExpr _definingTypeAsTyExpr;
+        public TypeCtorSig DefiningCtorSig => _definingCtor;
+        
+        partial void CheckTypeCtorNameEnv(string name, LexLocation loc);
+        partial void CheckValueCtorNameEnv(string name, LexLocation loc);
+
+        public TypeExpr DefiningCtorAsType()
         {
-            if (TypeCtorSigMap.ContainsKey(name))
-                throw new SemanticException("type constructor overloading is not implemented",lexLocation);
-            TypeCtorSigMap.Add(name,new TypeCtorSig
+            if (_definingTypeAsTyExpr != null)
+                return _definingTypeAsTyExpr;
+            var bTy = TyQName.Create(_definingCtor.Name, _definingCtor.Loc, this);
+            if (_definingCtor.ParamList.Length > 0)
             {
-                Name = name,
-                ParamList = paramLst.ToArray()
+                ListTypeExpr pLst = new ListTypeExpr();
+                foreach (var pNm in _definingCtor.ParamList)
+                {
+                    //TODO improve location of parameter
+                    pLst.Add(TyQName.Create(pNm,_definingCtor.Loc, this));
+                }
+                _definingTypeAsTyExpr = new TyApp(bTy,pLst,_definingCtor.Loc,this);
+            }
+            else
+            {
+                _definingTypeAsTyExpr = bTy;
+            }
+
+            return _definingTypeAsTyExpr;
+        } 
+        
+        public void StartDefiningCtor(string name, List<string> paramLst, LexLocation lexLocation)
+        {
+            CheckTypeCtorNameEnv(name, lexLocation);
+            if (TypeCtorMap.TryGetValue(name,out var ty))
+                throw new ADTDuplicatedException(lexLocation,ty);
+            _definingCtor = TypeCtorSig.Create(name, paramLst,lexLocation);
+        }
+
+        public void StopDefiningCtor(string name, ADType tydef)
+        {
+            //TODO add module name to ADT
+            tydef.SetValCtor(_definingCtor.ValCtorList.ToArray());
+            TypeCtorMap.Add(name,tydef);
+            _definingCtor = null;
+            _definingTypeAsTyExpr = null;
+        }
+
+        public void PrintTypeCtorDef(TextWriter writer)
+        {
+            writer.WriteLine($"{nameof(TypeCtorMap)} size: {TypeCtorMap.Count}");
+            foreach (var pair in TypeCtorMap)
+            {
+                writer.WriteLine($"type constructor {pair.Key}, type:{pair.Value.GetType()}");
+                foreach (var tuple in pair.Value.ValCtorLst)
+                {
+                    writer.WriteLine($"  {tuple.Item1}");
+                    writer.WriteLine($"  {PrettyPrinter.Show(tuple.Item2)}");
+                }
+            }
+        }
+
+        public void SetModuleName(QName qname)
+        {
+            qname.ToList.ForEach(nm =>
+            {
+                NameSpaceStack.Push(nm);                
             });
+            _moduleName = qname.ToString();
+        }
+
+        public void AddDefiningValCtor(string valCtorName, ConstructorTypeDecl sig)
+        {
+            CheckValueCtorNameEnv(valCtorName, sig._lexLocation);
+            if (ValueCtorMap.TryGetValue(valCtorName,out var ty))
+                throw new ValueCtorDuplicatedException(ty,sig._lexLocation);
+            _definingCtor.AddValCtor(valCtorName, sig.ValueTypeSig);
         }
     }
 
@@ -52,6 +166,24 @@ namespace SimpleType.Absyn
     {
         public string Name;
         public string[] ParamList;
+        public LexLocation Loc;
+        public List<Tuple<string, TypeExpr>> ValCtorList=new List<Tuple<string, TypeExpr>>();
+        
+        //TODO possible optimization, at most one type is defining!
+        public static TypeCtorSig Create(string name, List<string> paramLst, LexLocation lexLocation)
+        {
+            return new TypeCtorSig
+            {
+                Name = name,
+                ParamList = paramLst.ToArray(),
+                Loc = lexLocation
+            };
+        }
+
+        public void AddValCtor(string valCtorName, TypeExpr ty)
+        {
+            ValCtorList.Add(Tuple.Create(valCtorName,ty));
+        }
     }
 
     public partial class NameIdent
@@ -85,6 +217,14 @@ namespace SimpleType.Absyn
         }
     }
 
+    public partial class TyQName
+    {
+        public static TypeExpr Create(string name, LexLocation loc, ParsingContext ctx)
+        {
+            return new TyQName(new QNameList(new ListIdent {name}, loc,ctx),loc,ctx);
+        }
+    }
+    
     public partial class TyDeclName
     {
         public override LexLocation NameLoc => simplename_._lexLocation;
@@ -110,10 +250,7 @@ namespace SimpleType.Absyn
     {
         partial void ScanPass(ParsingContext ctx)
         {
-            qname_.ToList.ForEach(nm =>
-            {
-                ctx.NameSpaceStack.Push(nm);                
-            });
+            ctx.SetModuleName(qname_);
         }
     }
 
@@ -160,7 +297,15 @@ namespace SimpleType.Absyn
     {
         partial void ScanPass(ParsingContext ctx)
         {
-            ctx.AddCtorName(tyctordecl_.Name, tyctordecl_.ParamList,tyctordecl_.NameLoc);
+            ctx.StartDefiningCtor(tyctordecl_.Name, tyctordecl_.ParamList,tyctordecl_.NameLoc);
+        }
+    }
+
+    public partial class CoIndDeclTy
+    {
+        partial void ScanPass(ParsingContext ctx)
+        {
+            ctx.StartDefiningCtor(tyctordecl_.Name, tyctordecl_.ParamList,tyctordecl_.NameLoc);
         }
     }
 
@@ -174,15 +319,127 @@ namespace SimpleType.Absyn
 
         public IndDeclTy IndTypeParam => Accept(IndTypeVisitor.Instance, new Void());
     }
+
+    public abstract partial class CoIndTyCtorPre
+    {
+        private class CoIndTypeVisitor:Visitor<CoIndDeclTy, Void>
+        {
+            public static readonly CoIndTypeVisitor Instance = new CoIndTypeVisitor();
+            public CoIndDeclTy Visit(CoIndDeclTy p, Void arg) => p;
+        }
+
+        public CoIndDeclTy CoIndTypeParam => Accept(CoIndTypeVisitor.Instance, new Void());
+    }
     
+    public abstract partial class ADType
+    {
+        public Tuple<string, TypeExpr>[] ValCtorLst { get; private set; }
+
+        public void SetValCtor(Tuple<string,TypeExpr>[] valCtorList)
+        {
+            ValCtorLst = valCtorList;
+        }
+    }
+
     public partial class UnionType
     {
         partial void SemanticPass(ParsingContext ctx);
         
         partial void ScanPass(ParsingContext ctx)
         {
-            SemanticPass(ctx);    
-            ctx.TypeCtorMap.Add(indtyctorpre_.IndTypeParam.TyCtorDecl_.Name,this);
+            //TODO handle two cases "of" ParamTypeDecl or ":" TypeExpr
+            //TODO all names must defined before the current ADT(except the name and parameter type names of the defining ADT)
+            //TODO type construtor parameter/arity checking(no GADT or dependent type)
+            //TODO value constructors conform to same final type
+            SemanticPass(ctx);
+            ctx.StopDefiningCtor(indtyctorpre_.IndTypeParam.TyCtorDecl_.Name, this);
         }
     }
+    
+    public partial class RecordType
+    {
+        partial void SemanticPass(ParsingContext ctx);
+        
+        partial void ScanPass(ParsingContext ctx)
+        {
+            SemanticPass(ctx);
+            ctx.StopDefiningCtor(indtyctorpre_.IndTypeParam.TyCtorDecl_.Name, this);
+        }
+    }
+    
+    public partial class CoType
+    {
+        partial void SemanticPass(ParsingContext ctx);
+        
+        partial void ScanPass(ParsingContext ctx)
+        {
+            SemanticPass(ctx);
+            ctx.StopDefiningCtor(coindtyctorpre_.CoIndTypeParam.TyCtorDecl_.Name, this);
+        }
+    }
+
+    public abstract partial class ConstructorTypeDecl
+    {
+        protected TypeExpr ValSig;
+        public TypeExpr ValueTypeSig => ValSig;
+    }
+
+    public partial class EmptyCtrTyD
+    {
+        partial void ScanPass(ParsingContext ctx)
+        {
+            ValSig = ctx.DefiningCtorAsType();
+        }
+    }
+    
+    public partial class FullCtrTyD
+    {
+        partial void ScanPass(ParsingContext ctx)
+        {
+            ValSig = typeexpr_;
+        }
+    }
+    
+    public partial class ParamCtrTyD
+    {
+        partial void ScanPass(ParsingContext ctx)
+        {
+            ValSig = ParamTypeDecl_.AsCurriedHeadForm(ctx.DefiningCtorAsType());
+        }
+    }
+    
+    public partial class ParamTypeDecl
+    {
+        //TODO ParamTypeDecl (LastParamTy/ConsParamTy) curried form type expr as value constructor parameter
+        //TODO need extra form for projection type!
+        
+        private class CurriedHeadFormVisitor:Visitor<TypeExpr,TypeExpr>
+        {
+            public static readonly CurriedHeadFormVisitor Instance = new CurriedHeadFormVisitor();
+            public TypeExpr Visit(LastParamTy p, TypeExpr finalTy)
+            {
+                var ty = new TyArr(p.TypeExpr_,finalTy,p._lexLocation,null);
+                return ty;
+            }
+
+            public TypeExpr Visit(ConsParamTy p, TypeExpr finalTy)
+            {
+                var final = p.ParamTypeDecl_.Accept(this, finalTy);
+                //TODO merge location info 
+                var ty = new TyArr(p.TypeExpr_,final,p._lexLocation,null);
+                return ty;
+            }
+        }
+
+        public TypeExpr AsCurriedHeadForm(TypeExpr finalTy) => Accept(CurriedHeadFormVisitor.Instance, finalTy);
+    }
+    
+    public partial class CtrDecl
+    {
+        partial void ScanPass(ParsingContext ctx)
+        {
+            ctx.AddDefiningValCtor(simplename_.ToString(), constructortypedecl_);
+        }
+    }
+    
 }

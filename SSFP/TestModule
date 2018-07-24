@@ -23,7 +23,7 @@ type coList A = | Nil | Cons of LazyTuple A (coList A);
 
 type coList' A = | Nil | Cons : LazyTuple A (coList A)->coList' A;
 
-type Tuple A B C = Tuple{item1 of A;item2 of B;item3 of C};
+--type Tuple A B C = Tuple{item1 of A;item2 of B;item3 of C};
 
 let if c t f = match c with {| true -> t; | false -> f;};
 
