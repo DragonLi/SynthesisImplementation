@@ -21,9 +21,9 @@ namespace SimpleType.Absyn
             Loc = loc;
         }
 
-        public virtual void Print(TextWriter writer,Parser parser)
+        public virtual void Print(TextWriter writer)
         {
-            writer.WriteLine(parser.HintAt(Loc));
+            writer.WriteLine(Loc.HintLine());
             writer.WriteLine(Message);
         }
     }
@@ -36,11 +36,11 @@ namespace SimpleType.Absyn
             _type = type;
         }
 
-        public override void Print(TextWriter writer, Parser parser)
+        public override void Print(TextWriter writer)
         {
-            base.Print(writer, parser);
+            base.Print(writer);
             writer.WriteLine("there is another definition here:");
-            writer.WriteLine(parser.HintAt(_type._lexLocation));
+            writer.WriteLine(_type._lexLocation.HintLine());
         }
     }
 
@@ -53,11 +53,11 @@ namespace SimpleType.Absyn
             _ctor = ctor;
         }
 
-        public override void Print(TextWriter writer, Parser parser)
+        public override void Print(TextWriter writer)
         {
-            base.Print(writer, parser);
+            base.Print(writer);
             writer.WriteLine("there is another definition here:");
-            writer.WriteLine(parser.HintAt(_ctor._lexLocation));
+            writer.WriteLine(_ctor._lexLocation.HintLine());
         }
     }
     
@@ -66,7 +66,7 @@ namespace SimpleType.Absyn
             
         catch (SemanticException se)
         {
-          se.Print(Console.Out,parser);
+          se.Print(Console.Out);
         }
         
 */
@@ -138,8 +138,8 @@ namespace SimpleType.Absyn
                 writer.WriteLine($"type constructor {pair.Key}, type:{pair.Value.GetType()}");
                 foreach (var tuple in pair.Value.ValCtorLst)
                 {
-                    writer.WriteLine($"  {tuple.Item1}");
-                    writer.WriteLine($"  {PrettyPrinter.Show(tuple.Item2)}");
+                    writer.Write($"  {tuple.Item1} :: ");
+                    writer.WriteLine($"{PrettyPrinter.Print(tuple.Item2)}");
                 }
             }
         }
