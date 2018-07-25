@@ -101,7 +101,7 @@ namespace SimpleType.Absyn
                 foreach (var pNm in _definingCtor.ParamList)
                 {
                     //TODO improve location of parameter
-                    pLst.Add(TyQName.Create(pNm,_definingCtor.Loc, this));
+                    pLst.AddLast(TyQName.Create(pNm,_definingCtor.Loc, this));
                 }
                 _definingTypeAsTyExpr = new TyApp(bTy,pLst,_definingCtor.Loc,this);
             }
@@ -148,10 +148,10 @@ namespace SimpleType.Absyn
 
         public void SetModuleName(QName qname)
         {
-            qname.ToList.ForEach(nm =>
+            foreach (var nm in qname.ToList)
             {
                 NameSpaceStack.Push(nm);                
-            });
+            }
             _moduleName = qname.ToString();
         }
 
@@ -219,7 +219,10 @@ namespace SimpleType.Absyn
         partial void ScanPass(ParsingContext ctx)
         {
             var b = new StringBuilder();
-            ListIdent_.ForEach(str=>b.Append(str).Append("."));
+            foreach (var str in ListIdent_)
+            {
+                b.Append(str).Append(".");
+            }
             _str = b.Length <= 0 ? string.Empty : b.ToString(0, b.Length - 1);
         }
 
@@ -235,7 +238,9 @@ namespace SimpleType.Absyn
     {
         public static TypeExpr Create(string name, LexLocation loc, ParsingContext ctx)
         {
-            return new TyQName(new QNameList(new ListIdent {name}, loc,ctx),loc,ctx);
+            var listIdent = new ListIdent();
+            listIdent.AddFirst(name);
+            return new TyQName(new QNameList(listIdent, loc,ctx),loc,ctx);
         }
     }
 
@@ -421,13 +426,18 @@ namespace SimpleType.Absyn
     {
         partial void SemanticPass(ParsingContext ctx);
         
+        internal SimpleType.Absyn.NamedParamDecl[] _lst;
+        
         partial void ScanPass(ParsingContext ctx)
         {
             SemanticPass(ctx);
             var final = ctx.DefiningCtorAsType();
-            for (var i = listnamedparamdecl_.Count-1; i >=0; --i)
+            _lst = new NamedParamDecl[listnamedparamdecl_.Count];
+            listnamedparamdecl_.CopyTo(_lst,0);
+            //listnamedparamdecl_ = null;
+            for (var i = _lst.Length-1; i >=0; --i)
             {
-                var namedParam = listnamedparamdecl_[i];
+                var namedParam = _lst[i];
                 final = TyNamedArr.Create(namedParam.AsHead, final, ctx);
             }
             ctx.AddDefiningValCtor(simplename_,final);
@@ -440,13 +450,18 @@ namespace SimpleType.Absyn
     {
         partial void SemanticPass(ParsingContext ctx);
         
+        internal SimpleType.Absyn.NamedParamDecl[] _lst;
+
         partial void ScanPass(ParsingContext ctx)
         {
             SemanticPass(ctx);
             var final = ctx.DefiningCtorAsType();
-            for (var i = listnamedparamdecl_.Count-1; i >=0; --i)
+            _lst = new NamedParamDecl[listnamedparamdecl_.Count];
+            listnamedparamdecl_.CopyTo(_lst,0);
+            //listnamedparamdecl_ = null;
+            for (var i = _lst.Length-1; i >=0; --i)
             {
-                var namedParam = listnamedparamdecl_[i];
+                var namedParam = _lst[i];
                 final = TyNamedArr.Create(namedParam.AsHead, final, ctx);
             }
 

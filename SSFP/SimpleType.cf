@@ -131,7 +131,8 @@ TermBindPat . TermExpr ::= "let" LetPatDecl "=" TermExpr "in" TermExpr;
 TermBind  . TermExpr ::= "let" LetFunDecl "=" TermExpr "in" TermExpr;
 TermBindRec . TermExpr ::= "let" LetRecFunDecl "=" TermExpr "in" TermExpr;
 
-TermProj . TermExpr ::= "(" TermExpr ")" "^" QName;
+TermCoindProj . TermExpr ::= "(" TermExpr ")" "^" QName;
+TermRecProj   . TermExpr ::= "(" TermExpr ")" "." QName;
 TermWithType . TermExpr ::= "(" TermExpr ":" TypeExpr ")";
 TermRecMod . TermExpr ::= "{" TermExpr "with" [FieldBinding] "}";
 
