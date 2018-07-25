@@ -141,6 +141,8 @@ namespace SimpleType.Absyn
                     writer.Write($"  {tuple.Item1} :: ");
                     writer.WriteLine($"{PrettyPrinter.Print(tuple.Item2)}");
                 }
+                if (pair.Value.ValCtorLst.Length == 0)
+                    writer.WriteLine("  no value constructor");
             }
         }
 
@@ -153,12 +155,19 @@ namespace SimpleType.Absyn
             _moduleName = qname.ToString();
         }
 
-        public void AddDefiningValCtor(string valCtorName, ConstructorTypeDecl sig)
+        public void AddDefiningValCtor(SimpleName valCtorName, ConstructorTypeDecl sig)
         {
-            CheckValueCtorNameEnv(valCtorName, sig._lexLocation);
-            if (ValueCtorMap.TryGetValue(valCtorName,out var ty))
-                throw new ValueCtorDuplicatedException(ty,sig._lexLocation);
-            _definingCtor.AddValCtor(valCtorName, sig.ValueTypeSig);
+            AddDefiningValCtor(valCtorName, sig.ValueTypeSig);
+        }
+        
+        public void AddDefiningValCtor(SimpleName valCtorName, TypeExpr final)
+        {
+            var loc = valCtorName._lexLocation;
+            var name = valCtorName.ToString();
+            CheckValueCtorNameEnv(name, loc);
+            if (ValueCtorMap.TryGetValue(name,out var ty))
+                throw new ValueCtorDuplicatedException(ty,loc);
+            _definingCtor.AddValCtor(name, final);
         }
     }
 
@@ -192,6 +201,11 @@ namespace SimpleType.Absyn
         {
             return ident_;
         }
+        
+        public static NameIdent Create(string name, LexLocation loc, ParsingContext ctx)
+        {
+            return new NameIdent(name, loc, ctx);
+        }
     }
     
     public abstract partial class QName
@@ -222,6 +236,31 @@ namespace SimpleType.Absyn
         public static TypeExpr Create(string name, LexLocation loc, ParsingContext ctx)
         {
             return new TyQName(new QNameList(new ListIdent {name}, loc,ctx),loc,ctx);
+        }
+    }
+
+    public partial class TyArr
+    {
+        public static TypeExpr Create(TypeExpr p, TypeExpr r,ParsingContext ctx)
+        {
+            //TODO merge location info
+            return new TyArr(p, r, p._lexLocation, ctx);
+        }
+    }
+
+    public partial class TyNamedHead
+    {
+        public static TyNamedHead Create(SimpleName name, TypeExpr p, ParsingContext ctx)
+        {
+            return new TyNamedHead(name, p, name._lexLocation, ctx);
+        }
+    }
+
+    public partial class TyNamedArr
+    {
+        public static TypeExpr Create(TyNamedHead head, TypeExpr r, ParsingContext ctx)
+        {
+            return new TyNamedArr(head, r, head._lexLocation, ctx);
         }
     }
     
@@ -355,6 +394,28 @@ namespace SimpleType.Absyn
             ctx.StopDefiningCtor(indtyctorpre_.IndTypeParam.TyCtorDecl_.Name, this);
         }
     }
+
+    public abstract partial class NamedParamDecl
+    {
+        protected TyNamedHead ParamType;
+        public TyNamedHead AsHead => ParamType;
+    }
+
+    public partial class FullTyDecl
+    {
+        partial void ScanPass(ParsingContext ctx)
+        {
+            ParamType = TyNamedHead.Create(simplename_,typeexpr_,ctx);
+        }
+    }
+
+    public partial class ParamTyDecl
+    {
+        partial void ScanPass(ParsingContext ctx)
+        {
+            ParamType = TyNamedHead.Create(simplename_, ParamTypeDecl_.AsCurriedType(ctx), ctx);
+        }
+    }
     
     public partial class RecordType
     {
@@ -363,6 +424,14 @@ namespace SimpleType.Absyn
         partial void ScanPass(ParsingContext ctx)
         {
             SemanticPass(ctx);
+            var final = ctx.DefiningCtorAsType();
+            for (var i = listnamedparamdecl_.Count-1; i >=0; --i)
+            {
+                var namedParam = listnamedparamdecl_[i];
+                final = TyNamedArr.Create(namedParam.AsHead, final, ctx);
+            }
+            ctx.AddDefiningValCtor(simplename_,final);
+            
             ctx.StopDefiningCtor(indtyctorpre_.IndTypeParam.TyCtorDecl_.Name, this);
         }
     }
@@ -374,7 +443,23 @@ namespace SimpleType.Absyn
         partial void ScanPass(ParsingContext ctx)
         {
             SemanticPass(ctx);
+            var final = ctx.DefiningCtorAsType();
+            for (var i = listnamedparamdecl_.Count-1; i >=0; --i)
+            {
+                var namedParam = listnamedparamdecl_[i];
+                final = TyNamedArr.Create(namedParam.AsHead, final, ctx);
+            }
+
+            var autoNamed = NameIdent.Create(GenerateConstructorName(), coindtyctorpre_._lexLocation, ctx);
+            ctx.AddDefiningValCtor(autoNamed,final);
+            
             ctx.StopDefiningCtor(coindtyctorpre_.CoIndTypeParam.TyCtorDecl_.Name, this);
+        }
+
+        internal string GenerateConstructorName()
+        {
+            var tyCtorDecl = coindtyctorpre_.CoIndTypeParam.TyCtorDecl_;
+            return $"@{tyCtorDecl.Name}${tyCtorDecl.ParamList.Count}";
         }
     }
 
@@ -404,7 +489,7 @@ namespace SimpleType.Absyn
     {
         partial void ScanPass(ParsingContext ctx)
         {
-            ValSig = ParamTypeDecl_.AsCurriedHeadForm(ctx.DefiningCtorAsType());
+            ValSig = ParamTypeDecl_.AttachFinalType(ctx);
         }
     }
     
@@ -413,32 +498,49 @@ namespace SimpleType.Absyn
         //TODO ParamTypeDecl (LastParamTy/ConsParamTy) curried form type expr as value constructor parameter
         //TODO need extra form for projection type!
         
-        private class CurriedHeadFormVisitor:Visitor<TypeExpr,TypeExpr>
+        private class AddFinalTyVisitor:Visitor<TypeExpr,ParsingContext>
         {
-            public static readonly CurriedHeadFormVisitor Instance = new CurriedHeadFormVisitor();
-            public TypeExpr Visit(LastParamTy p, TypeExpr finalTy)
+            public static readonly AddFinalTyVisitor Instance = new AddFinalTyVisitor();
+            public TypeExpr Visit(LastParamTy p, ParsingContext ctx)
             {
-                var ty = new TyArr(p.TypeExpr_,finalTy,p._lexLocation,null);
+                var ty = new TyArr(p.TypeExpr_,ctx.DefiningCtorAsType(),p._lexLocation,ctx);
                 return ty;
             }
 
-            public TypeExpr Visit(ConsParamTy p, TypeExpr finalTy)
+            public TypeExpr Visit(ConsParamTy p, ParsingContext ctx)
             {
-                var final = p.ParamTypeDecl_.Accept(this, finalTy);
-                //TODO merge location info 
-                var ty = new TyArr(p.TypeExpr_,final,p._lexLocation,null);
+                var final = p.ParamTypeDecl_.Accept(this, ctx);
+                var ty = TyArr.Create(p.TypeExpr_,final,ctx);
                 return ty;
             }
         }
 
-        public TypeExpr AsCurriedHeadForm(TypeExpr finalTy) => Accept(CurriedHeadFormVisitor.Instance, finalTy);
+        public TypeExpr AttachFinalType(ParsingContext ctx) => Accept(AddFinalTyVisitor.Instance, ctx);
+        
+        private class AsCurriedTyVisitor:Visitor<TypeExpr,ParsingContext>
+        {
+            public static readonly AsCurriedTyVisitor Instance = new AsCurriedTyVisitor();
+            public TypeExpr Visit(LastParamTy p, ParsingContext ctx)
+            {
+                return p.TypeExpr_;
+            }
+
+            public TypeExpr Visit(ConsParamTy p, ParsingContext ctx)
+            {
+                var final = p.ParamTypeDecl_.Accept(this, ctx);
+                var ty = TyArr.Create(p.TypeExpr_,final,ctx);
+                return ty;
+            }
+        }
+
+        public TypeExpr AsCurriedType (ParsingContext ctx) => Accept(AsCurriedTyVisitor.Instance, ctx);
     }
     
     public partial class CtrDecl
     {
         partial void ScanPass(ParsingContext ctx)
         {
-            ctx.AddDefiningValCtor(simplename_.ToString(), constructortypedecl_);
+            ctx.AddDefiningValCtor(simplename_, constructortypedecl_);
         }
     }
     
