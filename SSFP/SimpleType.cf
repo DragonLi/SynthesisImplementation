@@ -64,7 +64,7 @@ ParamCtrTyD . ConstructorTypeDecl ::= "of" ParamTypeDecl;
 LastParamTy . ParamTypeDecl ::= TypeExpr;
 ConsParamTy . ParamTypeDecl ::= TypeExpr "*" ParamTypeDecl;
 
-separator NamedParamDecl ";";
+terminator NamedParamDecl ";";
 
 FullTyDecl  . NamedParamDecl ::= SimpleName ":" TypeExpr;
 ParamTyDecl . NamedParamDecl ::= SimpleName "of" ParamTypeDecl;
@@ -117,7 +117,7 @@ separator nonempty SinglePattern ",";
 
 MatchPattern . MatchPat ::= "|" [SinglePattern];
 MatchBranch . Branching ::= MatchPat "->" TermExpr ;
-terminator nonempty Branching ";";
+terminator Branching ";";
 
 RecFieldBind . FieldBinding ::= QName "=" TermExpr;
 separator nonempty FieldBinding ";";
