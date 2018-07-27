@@ -117,7 +117,7 @@ separator nonempty SinglePattern ",";
 
 MatchPattern . MatchPat ::= "|" [SinglePattern];
 MatchBranch . Branching ::= MatchPat "->" TermExpr ;
-terminator Branching ";";
+terminator nonempty Branching ";";
 
 RecFieldBind . FieldBinding ::= QName "=" TermExpr;
 separator nonempty FieldBinding ";";
