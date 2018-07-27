@@ -92,6 +92,10 @@
       <Link>TestModule</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="..\TestPP.txt">
+      <Link>TestPP.txt</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="..\TestTerm.txt">
       <Link>TestTerm.txt</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -100,6 +104,7 @@
       <Link>TestType.txt</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="BNFC.prettyPrint.bug.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

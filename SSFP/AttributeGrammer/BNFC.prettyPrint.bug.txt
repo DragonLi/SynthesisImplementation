@@ -1,0 +1,100 @@
+separatorRules :: Abs.MinimumSize -> Abs.Cat -> String -> [Rule]
+separatorRules size c s = if null s then terminatorRules size c s else ifEmpty [
+  Rule "(:[])" cs [Left c'],
+  Rule "(:)"   cs [Left c', Right s, Left cs]
+  ]
+ where
+   c' = transCat c
+   cs = ListCat c'
+   ifEmpty rs = if size == Abs.MNonempty
+                then rs
+                else Rule "[]" cs [] : rs
+
+terminatorRules :: Abs.MinimumSize -> Abs.Cat -> String -> [Rule]
+terminatorRules size c s = [
+  ifEmpty,
+  Rule "(:)" cs (Left c' : s' [Left cs])
+  ]
+ where
+   c' = transCat c
+   cs = ListCat c'
+   s' its = if null s then its else Right s : its
+   ifEmpty = if size == Abs.MNonempty
+                then Rule "(:[])" cs (Left c' : if null s then [] else [Right s])
+                else Rule "[]" cs []
+
+
+isOneFun f  = f == "(:[])"
+
+data Rul function = Rule
+  { funRule :: function
+      -- ^ The function (semantic action) of a rule.
+      --   In order to be able to generate data types this must be a constructor
+      --   (or an identity function).
+  , valCat  :: Cat
+      -- ^ The value category, i.e., the defined non-terminal.
+  , rhsRule :: [Either Cat String]
+      -- ^ The sentential form, i.e.,
+      --   the list of (non)terminals in the right-hand-side of a rule.
+  } deriving (Eq, Functor)
+
+-- | Checks if the list has a non-empty rule.
+hasOneFunc :: [Rule] -> Bool
+hasOneFunc = any (isOneFun . funRule)
+
+isConsFun f = f == "(:)"
+
+-- | Gets the separator for a list.
+getCons :: [Rule] -> String
+getCons rs = case find (isConsFun . funRule) rs of
+    Just (Rule _ _ cats) -> seper cats
+    Nothing              -> error $ "getCons: no construction function found in "
+                                  ++ intercalate ", " (map (show . funRule) rs)
+  where
+    seper [] = []
+    seper (Right x:_) = x
+    seper (Left _:xs) = seper xs
+
+
+    optsep = if (hasOneFunc rules and is seperator or not terminator) then "" else escapeChars sep
+    sep = getCons rules
+
+isSeparator :: [Rule] -> Bool
+isSeparator rs = case find (isOneFun . funRule) rs of
+                     Just (Rule _ _ cats) -> ! (hasRight cats)
+                     Nothing              -> false
+
+data Def
+    = Rule Label Cat [Item]
+    | Comment String
+    | Comments String String
+    | Internal Label Cat [Item]
+    | Token Ident Reg
+    | PosToken Ident Reg
+    | Entryp [Ident]
+    | Separator MinimumSize Cat String
+    | Terminator MinimumSize Cat String
+    | Delimiters Cat String String Separation MinimumSize
+    | Coercions Ident Integer
+    | Rules Ident [RHS]
+    | Function Ident [Arg] Exp
+    | Layout [String]
+    | LayoutStop [String]
+    | LayoutTop
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+
+-- | A context free grammar consists of a set of rules and some extended
+-- information (e.g. pragmas, literals, symbols, keywords).
+
+type CF = CFG Fun
+
+data CFG function = CFG
+    { cfgPragmas        :: [Pragma]
+    , cfgLiterals       :: [Literal]  -- ^ @Char, String, Ident, Integer, Double@.
+                                      --   @String@s are quoted strings,
+                                      --   and @Ident@s are unquoted.
+    , cfgSymbols        :: [Symbol]   -- ^ Symbols in the grammar, e.g. “*”, '->'.
+    , cfgKeywords       :: [KeyWord]  -- ^ Reserved words, e.g. 'if' 'while'.
+    , cfgReversibleCats :: [Cat]      -- ^ Categories that can be made left-recursive.
+    , cfgRules          :: [Rul function]
+    } deriving (Functor)

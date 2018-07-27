@@ -1,0 +1,12 @@
+module Prelude;
+-- Tuple coList coList' rec fac
+type One' = | One;
+
+type Tuple A B = Tuple{first:A ; second:B;};
+
+let rec fac (n:Nat) : Nat = if (n=0) 1 (n * fac (n-1));
+
+let testpair p = let (Tuple fst snd) = p in let (Tuple (Tuple x) @ a (Tuple y) @ z) = snd in let tail = (z) ^ Stream . tail in let r = 
+{
+  let x = f z in y with snd = b}
+in Tuple fst snd;
