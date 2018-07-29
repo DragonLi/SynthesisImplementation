@@ -2,65 +2,11 @@
 using System.IO;
 using System.Text;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using QUT.Gppg;
+using Void = QUT.Gppg.Void;
 
 namespace SimpleType.Absyn
 {
-    [StructLayout(LayoutKind.Sequential, Size = 1)]
-    public struct Void
-    {
-    }
-
-    public class SemanticException : Exception
-    {
-        public LexLocation Loc { get; }
-
-        public SemanticException(string message, LexLocation loc) : base(message)
-        {
-            Loc = loc;
-        }
-
-        public virtual void Print(TextWriter writer)
-        {
-            writer.WriteLine(Loc.HintLine());
-            writer.WriteLine(Message);
-        }
-    }
-
-    public class ADTDuplicatedException : SemanticException
-    {
-        private readonly ADType _type;
-        public ADTDuplicatedException(LexLocation loc, ADType type) : base("type constructor overloading is not implemented", loc)
-        {
-            _type = type;
-        }
-
-        public override void Print(TextWriter writer)
-        {
-            base.Print(writer);
-            writer.WriteLine("there is another definition here:");
-            writer.WriteLine(_type._lexLocation.HintLine());
-        }
-    }
-
-    public class ValueCtorDuplicatedException : SemanticException
-    {
-        private readonly ConstructorTypeDecl _ctor;
-
-        public ValueCtorDuplicatedException(ConstructorTypeDecl ctor, LexLocation loc) : base("value constructor overloading is not implemented", loc)
-        {
-            _ctor = ctor;
-        }
-
-        public override void Print(TextWriter writer)
-        {
-            base.Print(writer);
-            writer.WriteLine("there is another definition here:");
-            writer.WriteLine(_ctor._lexLocation.HintLine());
-        }
-    }
-    
 /*
             parser.Context.PrintTypeCtorDef(Console.Out);
             
@@ -78,6 +24,7 @@ namespace SimpleType.Absyn
         private readonly Stack<string> NameSpaceStack=new Stack<string>();
 
         private string _moduleName;
+        private QName _moduleQName;
 
         private Dictionary<string,ADType> TypeCtorMap=new Dictionary<string, ADType>();
         
@@ -86,6 +33,11 @@ namespace SimpleType.Absyn
         private TypeCtorSig _definingCtor;
         private TypeExpr _definingTypeAsTyExpr;
         public TypeCtorSig DefiningCtorSig => _definingCtor;
+
+        public bool IsDuplicatedInEnv(string name)
+        {
+            return false;
+        }
         
         partial void CheckTypeCtorNameEnv(string name, LexLocation loc);
         partial void CheckValueCtorNameEnv(string name, LexLocation loc);
@@ -119,6 +71,7 @@ namespace SimpleType.Absyn
             if (TypeCtorMap.TryGetValue(name,out var ty))
                 throw new ADTDuplicatedException(lexLocation,ty);
             _definingCtor = TypeCtorSig.Create(name, paramLst,lexLocation);
+            CheckTypeCtorKind(this,_definingCtor);
         }
 
         public void StopDefiningCtor(string name, ADType tydef)
@@ -150,9 +103,10 @@ namespace SimpleType.Absyn
         {
             foreach (var nm in qname.ToList)
             {
-                NameSpaceStack.Push(nm);                
+                NameSpaceStack.Push(nm);
             }
             _moduleName = qname.ToString();
+            _moduleQName = qname;
         }
 
         public void AddDefiningValCtor(SimpleName valCtorName, ConstructorTypeDecl sig)
@@ -168,16 +122,19 @@ namespace SimpleType.Absyn
             if (ValueCtorMap.TryGetValue(name,out var ty))
                 throw new ValueCtorDuplicatedException(ty,loc);
             _definingCtor.AddValCtor(name, final);
+            CheckValCtorType(this, valCtorName,final);
         }
     }
 
     public class TypeCtorSig
     {
         public string Name;
+        private string _qname;
+
         public string[] ParamList;
         public LexLocation Loc;
         public List<Tuple<string, TypeExpr>> ValCtorList=new List<Tuple<string, TypeExpr>>();
-        
+
         //TODO possible optimization, at most one type is defining!
         public static TypeCtorSig Create(string name, List<string> paramLst, LexLocation lexLocation)
         {
@@ -241,6 +198,25 @@ namespace SimpleType.Absyn
             var listIdent = new ListIdent();
             listIdent.AddFirst(name);
             return new TyQName(new QNameList(listIdent, loc,ctx),loc,ctx);
+        }
+
+        public bool IsNamed(string localName, QName moduleQName)
+        {
+            var thizList = qname_.ToList;
+            var thizListCount = thizList.Count;
+            if (thizListCount == 1)
+                return thizList[0] == localName;
+            var prefix = moduleQName.ToList;
+            if (thizListCount != prefix.Count + 1)
+                return false;
+            if (thizList[thizListCount - 1] != localName)
+                return false;
+            for (var i = 0; i < prefix.Count; i++)
+            {
+                if (prefix[i] != thizList[i])
+                    return false;
+            }
+            return true;
         }
     }
 
