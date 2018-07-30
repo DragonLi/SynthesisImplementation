@@ -2,6 +2,7 @@
 using System.IO;
 using System.Text;
 using System.Collections.Generic;
+using System.Linq;
 using QUT.Gppg;
 using Void = QUT.Gppg.Void;
 
@@ -32,16 +33,18 @@ namespace SimpleType.Absyn
         
         private TypeCtorSig _definingCtor;
         private TypeExpr _definingTypeAsTyExpr;
-        public TypeCtorSig DefiningCtorSig => _definingCtor;
 
-        public bool IsDuplicatedInEnv(string name)
-        {
-            return false;
-        }
-        
         partial void CheckTypeCtorNameEnv(string name, LexLocation loc);
-        partial void CheckValueCtorNameEnv(string name, LexLocation loc);
 
+        partial void CheckGlobalName(string name, LexLocation loc);
+        partial void CheckGlobalTypeCtorName(string name, LexLocation loc);
+        partial void CheckGlobalValueCtorName(string name, LexLocation loc);
+        partial void CheckGlobalFuncName(string name, LexLocation loc);
+        
+        partial void CheckQName(QName qname);
+        partial void CheckQName(string name, QName prefix, LexLocation loc);
+
+        
         public TypeExpr DefiningCtorAsType()
         {
             if (_definingTypeAsTyExpr != null)
@@ -71,13 +74,13 @@ namespace SimpleType.Absyn
             if (TypeCtorMap.TryGetValue(name,out var ty))
                 throw new ADTDuplicatedException(lexLocation,ty);
             _definingCtor = TypeCtorSig.Create(name, paramLst,lexLocation);
-            CheckTypeCtorKind(this,_definingCtor);
+            CheckTypeCtorKind(_definingCtor);
         }
 
         public void StopDefiningCtor(string name, ADType tydef)
         {
             //TODO add module name to ADT
-            tydef.SetValCtor(_definingCtor.ValCtorList.ToArray());
+            tydef.SetValCtor(_definingCtor.ValCtorNames, _definingCtor.ValCtorTys);
             TypeCtorMap.Add(name,tydef);
             _definingCtor = null;
             _definingTypeAsTyExpr = null;
@@ -88,13 +91,14 @@ namespace SimpleType.Absyn
             writer.WriteLine($"{nameof(TypeCtorMap)} size: {TypeCtorMap.Count}");
             foreach (var pair in TypeCtorMap)
             {
-                writer.WriteLine($"type constructor {pair.Key}, type:{pair.Value.GetType()}");
-                foreach (var tuple in pair.Value.ValCtorLst)
+                var adt = pair.Value;
+                writer.WriteLine($"type constructor {pair.Key}, type:{adt.GetType()}");
+                for (var i = 0; i < adt.CtorNmLst.Length; i++)
                 {
-                    writer.Write($"  {tuple.Item1} :: ");
-                    writer.WriteLine($"{PrettyPrinter.Print(tuple.Item2)}");
+                    writer.Write($"  {adt.CtorNmLst[i]} :: ");
+                    writer.WriteLine($"{PrettyPrinter.Print(adt.CtorTyLst[i])}");
                 }
-                if (pair.Value.ValCtorLst.Length == 0)
+                if (adt.CtorNmLst.Length == 0)
                     writer.WriteLine("  no value constructor");
             }
         }
@@ -118,11 +122,17 @@ namespace SimpleType.Absyn
         {
             var loc = valCtorName._lexLocation;
             var name = valCtorName.ToString();
-            CheckValueCtorNameEnv(name, loc);
             if (ValueCtorMap.TryGetValue(name,out var ty))
-                throw new ValueCtorDuplicatedException(ty,loc);
-            _definingCtor.AddValCtor(name, final);
-            CheckValCtorType(this, valCtorName,final);
+                throw new ValueCtorDuplicatedException(ty._lexLocation,loc);
+            _definingCtor.CheckAddValCtor(name, loc, final);
+            CheckValCtorType(valCtorName,final);
+        }
+
+        private int autonameCount = 0;
+        public string AutoGenerateNames()
+        {
+            autonameCount++;
+            return "$auto_" +autonameCount;
         }
     }
 
@@ -133,7 +143,9 @@ namespace SimpleType.Absyn
 
         public string[] ParamList;
         public LexLocation Loc;
-        public List<Tuple<string, TypeExpr>> ValCtorList=new List<Tuple<string, TypeExpr>>();
+        private readonly Dictionary<string, TypeExpr> _valCtorMap=new Dictionary<string, TypeExpr>();
+        public string[] ValCtorNames => _valCtorMap.Keys.ToArray();
+        public TypeExpr[] ValCtorTys => _valCtorMap.Values.ToArray();
 
         //TODO possible optimization, at most one type is defining!
         public static TypeCtorSig Create(string name, List<string> paramLst, LexLocation lexLocation)
@@ -146,9 +158,11 @@ namespace SimpleType.Absyn
             };
         }
 
-        public void AddValCtor(string valCtorName, TypeExpr ty)
+        public void CheckAddValCtor(string valCtorName, LexLocation loc, TypeExpr ty)
         {
-            ValCtorList.Add(Tuple.Create(valCtorName,ty));
+            if (_valCtorMap.TryGetValue(valCtorName,out var other))
+                throw new ValueCtorDuplicatedException(other._lexLocation,loc);
+            _valCtorMap.Add(valCtorName,ty);
         }
     }
 
@@ -199,25 +213,6 @@ namespace SimpleType.Absyn
             listIdent.AddFirst(name);
             return new TyQName(new QNameList(listIdent, loc,ctx),loc,ctx);
         }
-
-        public bool IsNamed(string localName, QName moduleQName)
-        {
-            var thizList = qname_.ToList;
-            var thizListCount = thizList.Count;
-            if (thizListCount == 1)
-                return thizList[0] == localName;
-            var prefix = moduleQName.ToList;
-            if (thizListCount != prefix.Count + 1)
-                return false;
-            if (thizList[thizListCount - 1] != localName)
-                return false;
-            for (var i = 0; i < prefix.Count; i++)
-            {
-                if (prefix[i] != thizList[i])
-                    return false;
-            }
-            return true;
-        }
     }
 
     public partial class TyArr
@@ -235,6 +230,9 @@ namespace SimpleType.Absyn
         {
             return new TyNamedHead(name, p, name._lexLocation, ctx);
         }
+
+        public override TypeExpr Type => typeexpr_;
+        public override SimpleName Name => simplename_;
     }
 
     public partial class TyNamedArr
@@ -353,11 +351,13 @@ namespace SimpleType.Absyn
     
     public abstract partial class ADType
     {
-        public Tuple<string, TypeExpr>[] ValCtorLst { get; private set; }
+        internal string[] CtorNmLst;
+        internal TypeExpr[] CtorTyLst;
 
-        public void SetValCtor(Tuple<string,TypeExpr>[] valCtorList)
+        public void SetValCtor(string[] nmLst, TypeExpr[] tyLst)
         {
-            ValCtorLst = valCtorList;
+            CtorNmLst = nmLst;
+            CtorTyLst = tyLst;
         }
     }
 

@@ -38,27 +38,28 @@ namespace SimpleType.Absyn
 
     public class ValueCtorDuplicatedException : SemanticException
     {
-        private readonly ConstructorTypeDecl _ctor;
+        private readonly LexLocation _other;
 
-        public ValueCtorDuplicatedException(ConstructorTypeDecl ctor, LexLocation loc) : base("value constructor overloading is not implemented", loc)
+        public ValueCtorDuplicatedException(LexLocation other, LexLocation loc) : base("value constructor overloading is not implemented", loc)
         {
-            _ctor = ctor;
+            _other = other;
         }
 
         public override void Print(TextWriter writer)
         {
             base.Print(writer);
             writer.WriteLine("there is another definition here:");
-            writer.WriteLine(_ctor._lexLocation.HintLine());
+            writer.WriteLine(_other.HintLine());
         }
     }
 
-    public class InvalidTypeForValueCtor : SemanticException
+    public class InvalidFinalTypeForValueCtor : SemanticException
     {
-        private TypeExpr _ty;
+        private TypeExpr _ty,_expecting;
 
-        public InvalidTypeForValueCtor(SimpleName valCtorName, TypeExpr valTy) : base($"Invalid Type For Value Constructor {valCtorName}", valCtorName._lexLocation)
+        public InvalidFinalTypeForValueCtor(SimpleName valCtorName,TypeExpr expecting, TypeExpr valTy) : base($"Invalid Type For Value Constructor {valCtorName}", valCtorName._lexLocation)
         {
+            _expecting = expecting;
             _ty = valTy;
         }
 
@@ -66,6 +67,7 @@ namespace SimpleType.Absyn
         {
             base.Print(writer);
             writer.WriteLine($"infer type is: {PrettyPrinter.Print(_ty)}");
+            writer.WriteLine($"expecting: {PrettyPrinter.Print(_expecting)}");
         }
     }
 }

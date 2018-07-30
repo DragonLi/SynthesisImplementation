@@ -13,9 +13,8 @@ terminator SingleDef ";";
 ConsTypeDef . SingleDef ::= ADType;
 ConsFunDef  . SingleDef ::= FunDef;
 
-StartMutual . EnterMutual ::= "{";
-StopMutual  . ExitMutual  ::= "}";
-MutualList . MutualDefList ::= "mutual" EnterMutual [SingleDef] ExitMutual;
+StartMutual . MutualTag  ::= "mutual";
+MutualList . MutualDefList ::= MutualTag "{" [SingleDef] "}";
 
 comment "--" ;
 comment "{-" "-}" ;
