@@ -37,7 +37,7 @@ namespace SimpleType.Absyn
         private void CheckValCtorType(SimpleName valCtorName, TypeExpr valTy)
         {
             CheckGlobalName(valCtorName.ToString(), valCtorName._lexLocation);
-            var kind = TypeofTypExpr(_definingCtorEnv, valTy);
+            var kind = Typeof(_definingCtorEnv, valTy);
             if (kind == null)
                 throw new SemanticException("Invalid Type of Value Constructor",valCtorName._lexLocation);
             var final = valTy.FinalType;
@@ -49,14 +49,14 @@ namespace SimpleType.Absyn
                 throw new InvalidFinalTypeForValueCtor(valCtorName, expectingCtorTy, final);
         }
 
-        private TypeExpr TypeofTypExpr(Dictionary<string,TypeExpr> env,TypeExpr ty)
+        private TypeExpr Typeof(Dictionary<string,TypeExpr> env,TypeExpr ty)
         {
             if (ty == null)
                 return null;
             switch (ty)
             {
                 case MetaTypVar metaTypVar:
-                    return TypeofTypExpr(env,metaTypVar.Body);
+                    return Typeof(env,metaTypVar.Body);
                 case UType uType:
                 case TyFloat tyFloat:
                 case TyStr tyStr:
@@ -66,7 +66,7 @@ namespace SimpleType.Absyn
                     return MapNameToType(env, tyQName);
                 case TyApp tyApp:
                 {
-                    var appTy = TypeofTypExpr(env,tyApp.TypeExpr_);
+                    var appTy = Typeof(env,tyApp.TypeExpr_);
                     var lastTy = appTy;
                     var n = tyApp.ListTypeExpr_.Count;
                     for (var i = 0; i < n; i++)
@@ -74,7 +74,7 @@ namespace SimpleType.Absyn
                         var spine = lastTy as TyArr;
                         if (spine == null)
                             throw new InvalidTypeAppNum(tyApp.TypeExpr_, appTy,n);
-                        var PA = TypeofTypExpr(env, tyApp.ListTypeExpr_[i]);
+                        var PA = Typeof(env, tyApp.ListTypeExpr_[i]);
                         var errType = spine.TypeExpr_1.Match(PA,this);
                         if (errType != null)
                             throw new InvalidTypeApp(tyApp.ListTypeExpr_[i],PA,spine.TypeExpr_1);
@@ -85,20 +85,20 @@ namespace SimpleType.Absyn
                 }
                 case TyArr tyArr:
                 {
-                    var A = TypeofTypExpr(env, tyArr.TypeExpr_1);
+                    var A = Typeof(env, tyArr.TypeExpr_1);
                     if (!(A is UType))
                         throw new InvalidTypeAbs(tyArr.TypeExpr_1,A,UType.Instance);
-                    var B = TypeofTypExpr(env, tyArr.TypeExpr_2);
+                    var B = Typeof(env, tyArr.TypeExpr_2);
                     if (!(B is UType))
                         throw new InvalidTypeAbs(tyArr.TypeExpr_2,B,UType.Instance);
                     return UType.Instance;
                 }
                 case TyNamedArr tyNamedArr:
                 {
-                    var A = TypeofTypExpr(env, tyNamedArr.TypeArrHead_.Type);
+                    var A = Typeof(env, tyNamedArr.TypeArrHead_.Type);
                     if (!(A is UType))
                         throw new InvalidTypeAbs(tyNamedArr.TypeArrHead_.Type,A,UType.Instance);
-                    var B = TypeofTypExpr(env, tyNamedArr.TypeExpr_);
+                    var B = Typeof(env, tyNamedArr.TypeExpr_);
                     if (!(B is UType))
                         throw new InvalidTypeAbs(tyNamedArr.TypeExpr_,B,UType.Instance);
                     return UType.Instance;

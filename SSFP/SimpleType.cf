@@ -130,10 +130,15 @@ TermBindPat . TermExpr ::= "let" LetPatDecl "=" TermExpr "in" TermExpr;
 TermBind  . TermExpr ::= "let" LetFunDecl "=" TermExpr "in" TermExpr;
 TermBindRec . TermExpr ::= "let" LetRecFunDecl "=" TermExpr "in" TermExpr;
 
-TermCoindProj . TermExpr ::= "(" TermExpr ")" "^" QName;
-TermRecProj   . TermExpr ::= "(" TermExpr ")" "." QName;
+TermCoindProj . TermExpr ::= QName "^" TermExpr;
 TermWithType . TermExpr ::= "(" TermExpr ":" TypeExpr ")";
 TermRecMod . TermExpr ::= "{" TermExpr "with" [FieldBinding] "}";
+
+SingleProjPat . ProjPat ::= QName;
+separator ProjPat "^";
+ProjBind . ProjectionBinding ::= [ProjPat] "=" TermExpr;
+separator nonempty ProjectionBinding ";";
+CoRecursive . TermExpr ::= "lazy" "{" [ProjectionBinding] "}";
 
 TermPatMatch . TermExpr ::= "match" MatchTermList "with" "{" [Branching] "}";
 TermImpoMatch . TermExpr ::= "match" MatchTermList "with" "absurd";
