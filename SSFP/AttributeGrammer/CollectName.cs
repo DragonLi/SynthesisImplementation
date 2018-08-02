@@ -32,8 +32,9 @@ namespace SimpleType.Absyn
         private Dictionary<string,ConstructorTypeDecl> ValueCtorMap = new Dictionary<string, ConstructorTypeDecl>();
         
         private TypeCtorSig _definingCtor;
-        private TypeExpr _definingTypeAsTyExpr;
 
+        #region TODO check name helper functions
+        
         partial void CheckTypeCtorNameEnv(string name, LexLocation loc);
 
         partial void CheckGlobalName(string name, LexLocation loc);
@@ -43,29 +44,12 @@ namespace SimpleType.Absyn
         
         partial void CheckQName(QName qname);
         partial void CheckQName(string name, QName prefix, LexLocation loc);
-
         
+        #endregion
+
         public TypeExpr DefiningCtorAsType()
         {
-            if (_definingTypeAsTyExpr != null)
-                return _definingTypeAsTyExpr;
-            var bTy = TyQName.Create(_definingCtor.Name, _definingCtor.Loc, this);
-            if (_definingCtor.ParamList.Length > 0)
-            {
-                ListTypeExpr pLst = new ListTypeExpr();
-                foreach (var pNm in _definingCtor.ParamList)
-                {
-                    //TODO improve location of parameter
-                    pLst.AddLast(TyQName.Create(pNm,_definingCtor.Loc, this));
-                }
-                _definingTypeAsTyExpr = new TyApp(bTy,pLst,_definingCtor.Loc,this);
-            }
-            else
-            {
-                _definingTypeAsTyExpr = bTy;
-            }
-
-            return _definingTypeAsTyExpr;
+            return _definingCtor.AsTyExpr;
         } 
         
         public void StartDefiningCtor(string name, List<string> paramLst, LexLocation lexLocation)
@@ -73,17 +57,17 @@ namespace SimpleType.Absyn
             CheckTypeCtorNameEnv(name, lexLocation);
             if (TypeCtorMap.TryGetValue(name,out var ty))
                 throw new ADTDuplicatedException(lexLocation,ty);
-            _definingCtor = TypeCtorSig.Create(name, paramLst,lexLocation);
+            _definingCtor = TypeCtorSig.Create(this,name, paramLst,lexLocation);
             CheckTypeCtorKind(_definingCtor);
         }
 
         public void StopDefiningCtor(string name, ADType tydef)
         {
             //TODO add module name to ADT
-            tydef.SetValCtor(_definingCtor.ValCtorNames, _definingCtor.ValCtorTys);
+            tydef.SetValCtor(_definingCtor.ValCtorNames, _definingCtor.ValCtorTys,_definingCtor.Kind);
             TypeCtorMap.Add(name,tydef);
             _definingCtor = null;
-            _definingTypeAsTyExpr = null;
+            _definingCtorEnv.Clear();
         }
 
         public void PrintTypeCtorDef(TextWriter writer)
@@ -92,7 +76,7 @@ namespace SimpleType.Absyn
             foreach (var pair in TypeCtorMap)
             {
                 var adt = pair.Value;
-                writer.WriteLine($"type constructor {pair.Key}, type:{adt.GetType()}");
+                writer.WriteLine($"type constructor {pair.Key}, type:{adt.GetType()},kind:{PrettyPrinter.Print(adt.Kind)}");
                 for (var i = 0; i < adt.CtorNmLst.Length; i++)
                 {
                     writer.Write($"  {adt.CtorNmLst[i]} :: ");
@@ -129,6 +113,7 @@ namespace SimpleType.Absyn
         }
 
         private int autonameCount = 0;
+
         public string AutoGenerateNames()
         {
             autonameCount++;
@@ -143,19 +128,42 @@ namespace SimpleType.Absyn
 
         public string[] ParamList;
         public LexLocation Loc;
+
+        public TypeExpr Kind;
+        
+        private TypeExpr _definingTypeAsTyExpr;
+        public TypeExpr AsTyExpr => _definingTypeAsTyExpr;
+
         private readonly Dictionary<string, TypeExpr> _valCtorMap=new Dictionary<string, TypeExpr>();
         public string[] ValCtorNames => _valCtorMap.Keys.ToArray();
         public TypeExpr[] ValCtorTys => _valCtorMap.Values.ToArray();
 
-        //TODO possible optimization, at most one type is defining!
-        public static TypeCtorSig Create(string name, List<string> paramLst, LexLocation lexLocation)
+        private TypeCtorSig(ParsingContext ctx, string name, string[] pList, LexLocation lexLocation)
         {
-            return new TypeCtorSig
+            Name = name;
+            ParamList = pList;
+            Loc = lexLocation;
+            _definingTypeAsTyExpr = TyQName.Create(Name, Loc, ctx);
+            if (ParamList.Length > 0)
             {
-                Name = name,
-                ParamList = paramLst.ToArray(),
-                Loc = lexLocation
-            };
+                ListTypeExpr pLst = new ListTypeExpr();
+                foreach (var pNm in ParamList)
+                {
+                    //TODO improve location of parameter
+                    pLst.AddLast(TyQName.Create(pNm,Loc, ctx));
+                }
+                _definingTypeAsTyExpr = new TyApp(_definingTypeAsTyExpr,pLst,Loc,ctx);
+            }
+        }
+
+        //TODO possible optimization, at most one type is defining!
+        public static TypeCtorSig Create(ParsingContext ctx,string name, List<string> paramLst, LexLocation lexLocation)
+        {
+            return new TypeCtorSig(ctx,
+               name,
+                paramLst.ToArray(),
+                lexLocation
+            );
         }
 
         public void CheckAddValCtor(string valCtorName, LexLocation loc, TypeExpr ty)
@@ -353,11 +361,13 @@ namespace SimpleType.Absyn
     {
         internal string[] CtorNmLst;
         internal TypeExpr[] CtorTyLst;
+        internal TypeExpr Kind;
 
-        public void SetValCtor(string[] nmLst, TypeExpr[] tyLst)
+        public void SetValCtor(string[] nmLst, TypeExpr[] tyLst, TypeExpr kind)
         {
             CtorNmLst = nmLst;
             CtorTyLst = tyLst;
+            Kind = kind;
         }
     }
 

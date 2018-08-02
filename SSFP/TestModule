@@ -11,7 +11,7 @@ type Nat = | Zero | Suc : (pred:Nat) -> Nat;
 
 type List A = | Nil : List A | Cons : A->List A -> List A;
 
-type InfTree A = | Leaf | Branch : (Nat -> Tree A) -> Tree A;
+type Tree A = | Leaf | Branch : (Nat -> Tree A) -> Tree A;
 
 type Tuple A B = Tuple{first:A ; second:B;};
 
