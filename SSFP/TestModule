@@ -58,6 +58,10 @@ let Absurd : Empty -> T = fun zero => match (zero:Empty) with absurd;
 let testpair p = 
     let (Tuple fst snd) = p in
     let (Tuple (Tuple x)@a (Tuple y)@z) = snd in
-    let tail = (z) ^ tail in
+    let tail = tail^z in
     let r = { (let x = f z in y) with snd = b}
     in Tuple fst snd;
+
+let testProj x = tail^tail^x;
+
+let NatStream x = lazy{head = x;tail=NatStream (x+1)};
