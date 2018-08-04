@@ -31,6 +31,7 @@ separator nonempty TypeExpr2 "";
 TyInt   . TypeExpr2 ::= "Int";
 TyFloat . TypeExpr2 ::= "Double";
 TyStr   . TypeExpr2 ::= "String";
+TyBool  . TypeExpr2 ::= "Bool";
 TyQName    . TypeExpr2 ::= QName;
 TyApp      . TypeExpr1 ::= TypeExpr2 [TypeExpr2];
 TyArr      . TypeExpr ::= TypeExpr1 "->" TypeExpr;
@@ -93,6 +94,8 @@ TermNeg. TermExpr7 ::= "(" "-" TermExpr8 ")";
 separator nonempty TermExpr9 "";
 TermApp   . TermExpr8 ::= TermExpr9 [TermExpr9];
 
+ConstTrue . TermExpr9 ::= "true";
+ConstFalse . TermExpr9 ::= "false";
 ConstInt. TermExpr9 ::= Integer ;
 ConstDouble. TermExpr9 ::= Double ;
 ConstStr. TermExpr9 ::= String ;
