@@ -15,6 +15,8 @@ namespace SimpleType.Absyn
             TypeExpr ctorKind = UType.Instance;
             for (var i = 0; i < _definingCtor.ParamList.Length; i++)
             {
+                if (_definingCtorEnv.ContainsKey(_definingCtor.ParamList[i]))
+                    throw new SemanticException($"duplicated parameter names of Type Constructor:{_definingCtor.ParamList[i]}",_definingCtor.Loc);
                 _definingCtorEnv.Add(_definingCtor.ParamList[i], UType.Instance);
                 ctorKind = TyArr.Create(UType.Instance, ctorKind,this);
             }

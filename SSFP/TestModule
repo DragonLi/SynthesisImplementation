@@ -7,6 +7,8 @@ type One = One{};
 
 type One' = | One;
 
+type bool = | true | false;
+
 type Nat = | Zero | Suc : (pred:Nat) -> Nat;
 
 type List A = | Nil : List A | Cons : A->List A -> List A;
