@@ -18,7 +18,7 @@ namespace UnifyCS
 
     public class VariableNode : TermNode
     {
-        public int DBIndex;//de Bruijn: co db index from Everybody’s Got To Be Somewhere
+        public int VarIndex;        
     }
 
     public class FuncSym : TermNode
